@@ -1,0 +1,62 @@
+/* 你現在整個 auth 流程頁面已經一致
+你目前應該有：
+login.ejs
+register.ejs
+forgot_password.ejs
+reset_password.ejs
+verify_register_email.ejs
+verify_email.ejs
+全部都共用：
+basic/auth_card.ejs
+msgBox
+一致的卡片外觀
+一致的按鈕 / 連結風格
+如果你要，我下一步可以再幫你把 這六頁的共用 style 抽到一個獨立 CSS 檔，這樣每個 EJS 就不用重複貼同一段 <style>。
+把 這六頁的共用 style 抽到一個獨立 CSS 檔
+可以，這樣會更乾淨。
+做法是把這六頁共用的 auth card 樣式抽到一個獨立 CSS，例如：
+public/stylesheets/auth.css
+然後讓 layout.ejs 全站載入，或只在這六頁載入。
+你現在最省事的做法是：直接在 layout.ejs 載入一次。
+1) 新增檔案：public/stylesheets/auth.css
+直接建立這個檔案，內容如下 */
+
+.small-muted {
+  font-size: 12px;
+  color: #666;
+}
+
+.auth-wrap {
+  max-width: 680px;
+  margin: 0 auto;
+}
+
+.auth-wrap.auth-wrap-sm {
+  max-width: 520px;
+}
+
+.auth-wrap.auth-wrap-md {
+  max-width: 560px;
+}
+
+.auth-card {
+  border: 1px solid #e9ecef;
+  border-radius: 12px;
+  background: #fff;
+  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.04);
+}
+
+.auth-title {
+  font-weight: 700;
+  letter-spacing: 0.5px;
+}
+
+.auth-hr {
+  border-top: 1px solid #eee;
+  margin: 16px 0;
+}
+
+.auth-mono {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas,
+    "Liberation Mono", "Courier New", monospace;
+}

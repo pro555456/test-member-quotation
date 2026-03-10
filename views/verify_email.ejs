@@ -1,0 +1,81 @@
+<!-- 5) views/verify_email.ejs -->
+ <%- include('./basic/auth_card.ejs', {
+  authWrapClass: '',
+  titleText: 'Email 驗證',
+  subtitleText: '正在驗證您的新 Email，請稍候…',
+  body: `
+    <div id="subtitle" class="small-muted mb-3">驗證中，請稍候…</div>
+
+    <div class="text-center mt-3">
+      <a class="btn btn-outline-secondary" href="/profile">回我的資料</a>
+      <a class="btn btn-outline-secondary ml-2" href="/index">回首頁</a>
+    </div>
+
+    <div class="small-muted mt-3 text-center">
+      驗證成功後會自動跳回「我的資料」。
+    </div>
+  `
+}) %>
+
+<script>
+  function showMsg(msg, type='danger', autoHideMs=0) {
+    const box = document.getElementById('msgBox');
+    box.style.display = 'block';
+    box.classList.remove('alert-danger','alert-success','alert-warning','alert-info');
+    box.classList.add('alert-' + type);
+    box.innerText = msg || '';
+    box.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    if (autoHideMs > 0) {
+      setTimeout(() => {
+        box.style.display = 'none';
+        box.innerText = '';
+      }, autoHideMs);
+    }
+  }
+
+  function showSuccess(msg) { showMsg(msg, 'success', 800); }
+  function showInfo(msg) { showMsg(msg, 'info'); }
+  function showError(msg) { showMsg(msg, 'danger'); }
+
+  function setSubtitle(text) {
+    const el = document.getElementById('subtitle');
+    if (el) el.innerText = text || '';
+  }
+
+  function getApiErrorMessage(err, fallback='驗證失敗') {
+    const data = err?.response?.data;
+    return data?.message || err?.message || fallback;
+  }
+
+  async function runVerify() {
+    const params = new URLSearchParams(location.search);
+    const token = params.get('token') || '';
+
+    if (!token) {
+      setSubtitle('缺少 token，請確認連結是否完整');
+      showError('缺少 token，請確認連結是否完整');
+      return;
+    }
+
+    try {
+      setSubtitle('驗證中，請稍候…');
+      showInfo('驗證中…');
+
+      await axios.get('/api/me/email/verify', { params: { token } });
+
+      setSubtitle('驗證成功，正在跳回「我的資料」…');
+      showSuccess('驗證成功！Email 已更新');
+
+      setTimeout(() => {
+        window.location.href = '/profile?verified=1';
+      }, 800);
+
+    } catch (e) {
+      console.error(e);
+      setSubtitle('驗證失敗');
+      showError(getApiErrorMessage(e, '驗證失敗或連結已失效'));
+    }
+  }
+
+  $(document).ready(runVerify);
+</script>

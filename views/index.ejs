@@ -1,0 +1,100 @@
+<!-- 我直接給你可以「整檔覆蓋」的版本：views/index.ejs + views/basic/header.ejs（navbar only、登入狀態切換、登出可用、後台 RBAC 顯示）。
+
+1) views/index.ejs（layout 版整檔覆蓋） -->
+
+<% title = 'TMC 商城'; %>
+
+<div class="content">
+  <div class="container mb-5">
+    <h2 class="mt-3 mb-5 text-danger">現正熱賣中</h2>
+    <div class="cards row"></div>
+  </div>
+</div>
+
+<script>
+  let productList = [];
+
+  $(document).ready(function init() {
+    axios.get('/api/products')
+      .then((res) => {
+        let html = "";
+
+        if (res.status === 200 && res.data && Array.isArray(res.data.productList)) {
+          productList = res.data.productList;
+
+          for (let i = 0; i < productList.length; i++) {
+            const p = productList[i];
+
+            // img 可能 null
+            const imgSrc = (p.img && String(p.img).trim())
+              ? p.img
+              : '/images/no-image.png'; // 你放一張預設圖（可選）
+
+            // 用 inventory + status 判斷可買
+            const canBuy = Number(p.inventory) > 0 && p.status === 'A';
+
+            html += `
+              <div class="card ml-5 col-4 mb-4">
+                <div class="card-img middle">
+                  <img class="card-img-top middle mt-2" src="${imgSrc}" alt="product">
+                </div>
+                <div class="card-body">
+                  <h5 class="card-title">${escapeHtml(p.name || '')}</h5>
+                  <p class="card-text">${escapeHtml(p.description || '')}</p>
+                  <div class="card-detail row">
+                    <div class="col">
+                      售價 : <span class="text-danger mr-3">$${Number(p.amount || 0)}</span>
+                    </div>
+                    ${
+                      canBuy
+                        ? `<button class="col btn btn-danger mr-2 align-self-end" id="buy-${p.id}">立即搶購</button>`
+                        : `<button class="col btn btn-danger mr-2 align-self-end disabled" tabindex="-1" aria-disabled="true">補貨中</button>`
+                    }
+                  </div>
+                </div>
+              </div>
+            `;
+          }
+        } else {
+          html = '<h1>商城維護中！</h1>';
+        }
+
+        $('.cards').html(html);
+
+        for (let i = 0; i < productList.length; i++) {
+          $(document).on('click', `#buy-${productList[i].id}`, () => {
+            buyProduct(JSON.stringify(productList[i]));
+          });
+        }
+      })
+      .catch((error) => {
+        console.error(error);
+        alert("系統發生錯誤，請洽管理員。");
+        location.reload();
+      });
+  });
+
+  function escapeHtml(str) {
+    return String(str ?? '').replace(/[&<>"']/g, (m) => ({
+      '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'
+    }[m]));
+  }
+
+  function buyProduct(productInfo) {
+    const product = JSON.parse(productInfo);
+
+    let shopcart = (localStorage.getItem("shopcart") && localStorage.getItem("shopcart").length > 1)
+      ? JSON.parse(localStorage.getItem("shopcart"))
+      : [];
+
+    const idArr = shopcart.map(x => x.id);
+
+    if (!idArr.includes(product.id)) {
+      shopcart.push({ id: product.id, name: product.name, price: product.amount, amount: 1 });
+    }
+
+    localStorage.setItem("shopcart", JSON.stringify(shopcart));
+    $("#shopcart").text(`購物車(${shopcart.length})`);
+    alert("商品已新增至購物車！");
+  }
+</script>

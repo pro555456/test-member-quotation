@@ -1,0 +1,448 @@
+{
+    "openapi": "3.0.0",
+    "info": {
+        "version": "1.0.0",
+        "title": "TMC SHOP API",
+        "description": "API Description"
+    },
+    "tags": [
+        {
+            "name": "Product",
+            "description": "API for Product"
+        },
+        {
+            "name": "User",
+            "description": "API for User"
+        },
+        {
+            "name": "Order",
+            "description": "API for Order"
+        }
+    ],
+    "consumes": ["application/json"],
+    "produces": ["application/json"],
+    "paths": {
+        "/api/product": {
+            "post": {
+                "tags": ["Product"],
+                "summary": "Create a new product",
+                "requestBody": {
+                    "description": "In Formdata",
+                    "required": true,
+                    "content": {
+                        "multipart/form-data": {
+                            "schema": {
+                                "$ref": "#/definitions/Product"
+                            }
+                        }
+                    }
+                },
+                "produces": ["application/json"],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/definitions/basicResult"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Failed."
+                    },
+                    "403": {
+                        "description": "Failed to connect."
+                    }
+                }
+            }
+        },
+        "/api/products": {
+            "get": {
+                "tags": ["Product"],
+                "summary": "Get all products",
+                "requestBody": {
+                },
+                "produces": ["application/json"],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/definitions/login"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Failed."
+                    },
+                    "403": {
+                        "description": "Failed to connect."
+                    }
+                }
+            }
+        },
+        "/api/product/{id}": {
+            "put": {
+                "tags": ["Product"],
+                "summary": "Update product",
+                "parameters": [
+                    {
+                      "name": "id", 
+                      "in": "path",
+                      "required": true,
+                      "description": "Product id"
+                    }
+                  ],
+                "requestBody": {
+                    "description": "In Formdata",
+                    "required": true,
+                    "content": {
+                        "multipart/form-data": {
+                            "schema": {
+                                "$ref": "#/definitions/UpdateProduct"
+                            }
+                        }
+                    }
+                },
+                "produces": ["application/json"],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/definitions/basicResult"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Failed."
+                    },
+                    "403": {
+                        "description": "Failed to connect."
+                    }
+                }
+            },
+            "delete": {
+                "tags": ["Product"],
+                "summary": "Delete product",
+                "parameters": [
+                    {
+                        "description": "Product Id",
+                        "required": true,
+                        "name" : "id",
+                        "type": "string",
+                        "in": "path"
+                    }
+                ],
+                "produces": ["application/json"],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/definitions/basicResult"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Failed."
+                    },
+                    "403": {
+                        "description": "Failed to connect."
+                    }
+                }
+            }
+        },
+        "/api/login": {
+            "post": {
+                "tags": ["User"],
+                "summary": "Login",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/definitions/login"
+                            }
+                        }
+                    }
+                },
+                "produces": ["application/json"],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/definitions/custAccount"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Failed."
+                    },
+                    "403": {
+                        "description": "Failed to connect."
+                    }
+                }
+            }
+        },
+
+        "/api/register": {
+            "post": {
+                "tags": ["User"],
+                "summary": "Create a new User",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/definitions/register"
+                            }
+                        }
+                    }
+                },
+                "produces": ["application/json"],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/definitions/basicResult"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Failed."
+                    },
+                    "403": {
+                        "description": "Failed to connect."
+                    }
+                }
+            }
+        },
+
+        "/api/history/{id}": {
+            "get": {
+                "tags": ["Order"],
+                "summary": "Search order history",
+                "parameters": [
+                    {
+                      "name": "id", 
+                      "in": "path",
+                      "required": true,
+                      "description": "Cust id"
+                    }
+                  ],                
+                "produces": ["application/json"],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/definitions/order"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Failed."
+                    },
+                    "403": {
+                        "description": "Failed to connect."
+                    }
+                }
+            }
+        }
+    },
+    "definitions": {
+        "Product": {
+            "type": "object",
+            "properties": {
+                "name": {
+                    "type": "string"
+                },
+                "amount": {
+                    "type": "number"
+                },
+                "inventory": {
+                    "type": "number"
+                },
+                "status": {
+                    "type": "string"
+                },
+                "desc": {
+                    "type": "string"
+                },
+                "img": {
+                    "type": "file",
+                    "format": "binary"
+                }
+            }
+        },
+        "Products": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "number"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "amount": {
+                    "type": "number"
+                },
+                "inventory": {
+                    "type": "number"
+                },
+                "status": {
+                    "type": "string"
+                },
+                "desc": {
+                    "type": "string"
+                },
+                "img": {
+                    "type": "file",
+                    "format": "binary"
+                },
+                "creat_date": {
+                    "type": "string"
+                }
+            }
+        },
+        "UpdateProduct": {
+            "type": "object",
+            "properties": {
+                "name": {
+                    "type": "string"
+                },
+                "amount": {
+                    "type": "number"
+                },
+                "inventory": {
+                    "type": "number"
+                },
+                "status": {
+                    "type": "string"
+                },
+                "desc": {
+                    "type": "string"
+                },
+                "img": {
+                    "type": "file",
+                    "format": "binary"
+                }
+            }
+        },
+        "basicResult": {
+            "type": "object",
+            "properties": {
+                "success": {
+                    "type": "boolean"
+                }
+            }
+        },
+        "login": {
+            "type": "object",
+            "properties": {
+                "account": {
+                    "type": "string"
+                },
+                "password": {
+                    "type": "string"
+                }
+            }
+        },
+        "custAccount": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "number"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "type": {
+                    "type": "number"
+                },
+                "cellphone": {
+                    "type": "number"
+                },
+                "email": {
+                    "type": "string"
+                },
+                "birthday": {
+                    "type": "string"
+                },
+                "create_date": {
+                    "type": "string"
+                }
+            }
+        },
+        "register" : {
+            "type": "object",
+            "properties": {
+                "account": {
+                    "type": "string"
+                },
+                "password": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "phone": {
+                    "type": "string"
+                },
+                "email": {
+                    "type": "string"
+                },
+                "birthday": {
+                    "type": "string"
+                }
+            }
+        },
+        "order" : {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "string"
+                },
+                "cust_id": {
+                    "type": "string"
+                },
+                "cust_name": {
+                    "type": "string"
+                },
+                "phone": {
+                    "type": "string"
+                },
+                "address": {
+                    "type": "string"
+                },
+                "status": {
+                    "type": "string"
+                },
+                "total": {
+                    "type": "string"
+                },
+                "create_date": {
+                    "type": "string"
+                }
+            }
+        }
+
+    }
+}

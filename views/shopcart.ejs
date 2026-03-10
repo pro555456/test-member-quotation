@@ -1,0 +1,304 @@
+<!-- 好，直接把 shopcart.ejs 改成 layout 版，並且把 submitOrder() 改成你「企業版」的格式：
+✅ 只送 items（productId/qty）+ 收件資料 + payment
+✅ total 不再由前端送（後端自己算）
+✅ 跟你目前 /api/submitOrder（後端用 order.items 算 total）對齊
+✅ 仍保留你現在 localStorage 購物車（只是送出時轉成 items）
+
+✅ views/shopcart.ejs（layout 版，整檔覆蓋） -->
+
+<% title = 'TMC 商城購物車'; %>
+
+<div class="content">
+  <div class="container mb-5">
+    <div id="page1">
+      <h2 class="mt-3 mb-4 text-danger">購物車</h2>
+
+      <table id="products" class="border-gray table table-striped table-bordered my-3">
+        <thead class="text-center">
+          <tr>
+            <th>商品名稱</th>
+            <th>單價</th>
+            <th>數量</th>
+            <th>小計</th>
+            <th>移除商品</th>
+          </tr>
+        </thead>
+        <tbody class="products-content text-center"></tbody>
+      </table>
+
+      <hr/>
+      <h5 class="text-right w-100 font-weight-bold">總計 $ <span id="total">0</span> 元</h5>
+
+      <div class="text-right">
+        <button id="changePage" class="btn btn-lg btn-danger mb-3" onclick="changePage()">填寫訂單資料</button>
+      </div>
+    </div>
+
+    <div id="page2" class="d-none">
+      <h2 class="mt-3 mb-4 text-danger">訂單資料</h2>
+
+      <div class="border p-3">
+        <div class="form-group">
+          <label>收件人姓名</label>
+          <input id="orderName" class="form-control" placeholder="請輸入收件人姓名">
+        </div>
+
+        <div class="form-group">
+          <label>收件人電話</label>
+          <input id="orderPhone" class="form-control" placeholder="09xxxxxxxx">
+        </div>
+
+        <div class="form-group">
+          <label>收件地址</label>
+          <input id="orderAddress" class="form-control" placeholder="請輸入收件地址">
+        </div>
+
+        <div class="form-group">
+          <label>結帳金額</label>
+          <div class="font-weight-bold">$ <span class="total">0</span> 元</div>
+          <div class="text-muted" style="font-size:12px;">
+            * 最終金額以後端重新計算為準（避免前端竄改）
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label>付款方式</label>
+          <div>
+            <div class="form-check form-check-inline">
+              <input class="form-check-input" type="radio" id="credit" name="payment" value="credit">
+              <label class="form-check-label" for="credit">信用卡付款</label>
+            </div>
+            <div class="form-check form-check-inline">
+              <input class="form-check-input" type="radio" id="bank" name="payment" value="bank">
+              <label class="form-check-label" for="bank">銀行轉帳</label>
+            </div>
+          </div>
+        </div>
+
+        <div class="text-right">
+          <button id="btnBack" class="btn btn-outline-secondary mr-2" onclick="backToCart()">返回購物車</button>
+          <button id="submitOrderBtn" class="btn btn-lg btn-danger" onclick="submitOrder()">結帳</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="pay"></div>
+
+<script>
+  let productList = [];
+  let dt = null;
+
+  $(document).ready(function init() {
+    // ✅ 成功回跳處理
+    const search = new URLSearchParams(window.location.search);
+    if (search.get('success')) {
+      alert("購買成功！再去看看別的商品吧。");
+      localStorage.setItem("shopcart", JSON.stringify([]));
+      window.location.href = "/index";
+      return;
+    }
+
+    // ✅ 讀購物車
+    productList = readCart();
+
+    if (!productList.length) {
+      $('#changePage').addClass("disabled");
+    }
+
+    renderCartTable(productList);
+  });
+
+  function readCart() {
+    try {
+      const raw = localStorage.getItem("shopcart");
+      if (!raw) return [];
+      const arr = JSON.parse(raw);
+      if (!Array.isArray(arr)) return [];
+      // 統一 qty 欄位（你原本是 amount）
+      return arr.map(x => ({
+        id: Number(x.id),
+        name: x.name || '',
+        price: Number(x.price || 0),
+        qty: Number(x.amount || x.qty || 0)
+      })).filter(x => Number.isFinite(x.id) && x.qty > 0);
+    } catch {
+      return [];
+    }
+  }
+
+  function saveCart(list) {
+    const normalized = list.map(x => ({
+      id: x.id,
+      name: x.name,
+      price: x.price,
+      amount: x.qty
+    }));
+    localStorage.setItem("shopcart", JSON.stringify(normalized));
+    $("#shopcart").text(`購物車(${normalized.length})`);
+  }
+
+  function calcTotal(list) {
+    return list.reduce((sum, it) => sum + (Number(it.price) * Number(it.qty)), 0);
+  }
+
+  function renderCartTable(list) {
+    const total = calcTotal(list);
+    $('#total').text(total);
+
+    const rows = list.map(it => {
+      const sub = it.price * it.qty;
+      return [
+        escapeHtml(it.name),
+        it.price,
+        `
+          <button class="circle-button bg-white" onclick="plus(${it.id})">+</button>
+          <span id="count-${it.id}" style="display:inline-block;width:32px;text-align:center;">${it.qty}</span>
+          <button class="circle-button bg-white" onclick="minus(${it.id})">-</button>
+        `,
+        `<span id="subAmount-${it.id}">${sub}</span>`,
+        `<button class="btn btn-danger btn-sm" onclick="removeItem(${it.id})">刪除</button>`
+      ];
+    });
+
+    if (!dt) {
+      dt = $('#products').DataTable({
+        info: false,
+        searching: false,
+        paging: false,
+        ordering: false,
+        language: { emptyTable: "尚未選購商品！" },
+        data: rows,
+        columns: [
+          { title: "商品名稱" },
+          { title: "單價" },
+          { title: "數量" },
+          { title: "小計" },
+          { title: "移除商品" }
+        ]
+      });
+    } else {
+      dt.clear();
+      dt.rows.add(rows);
+      dt.draw(false);
+    }
+  }
+
+  function escapeHtml(str) {
+    return String(str ?? '').replace(/[&<>"']/g, (m) => ({
+      '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'
+    }[m]));
+  }
+
+  // ✅ 數量 +
+  function plus(id) {
+    const it = productList.find(x => x.id === Number(id));
+    if (!it) return;
+    it.qty += 1;
+    saveCart(productList);
+    renderCartTable(productList);
+  }
+
+  // ✅ 數量 -
+  function minus(id) {
+    const it = productList.find(x => x.id === Number(id));
+    if (!it) return;
+    it.qty = Math.max(0, it.qty - 1);
+    if (it.qty === 0) {
+      productList = productList.filter(x => x.id !== Number(id));
+    }
+    saveCart(productList);
+    renderCartTable(productList);
+
+    if (!productList.length) $('#changePage').addClass("disabled");
+  }
+
+  // ✅ 刪除
+  function removeItem(id) {
+    productList = productList.filter(x => x.id !== Number(id));
+    saveCart(productList);
+    renderCartTable(productList);
+    if (!productList.length) $('#changePage').addClass("disabled");
+  }
+
+  // ✅ 切到訂單頁
+  function changePage() {
+    if (!productList.length) return;
+
+    $("#page1").addClass("d-none");
+    $("#page2").removeClass("d-none");
+    $(".total").text($('#total').text());
+  }
+
+  function backToCart() {
+    $("#page2").addClass("d-none");
+    $("#page1").removeClass("d-none");
+  }
+
+  // ✅ 送出訂單：改成 items 格式 + 後端算金額
+  async function submitOrder() {
+    const btn = document.getElementById('submitOrderBtn');
+    btn.disabled = true;
+
+    try {
+      if (!productList.length) {
+        alert('購物車是空的');
+        return;
+      }
+
+      const name = $("#orderName").val().trim();
+      const phone = $("#orderPhone").val().trim();
+      const address = $("#orderAddress").val().trim();
+      const payment = $('input[name="payment"]:checked').val();
+
+      if (!name) return alert('請輸入收件人姓名');
+      if (!phone) return alert('請輸入電話');
+      if (!address) return alert('請輸入地址');
+      if (!payment) return alert('請選擇付款方式');
+
+      // ✅ items 格式：[{ productId, qty }]
+      const items = productList.map(x => ({
+        productId: Number(x.id),
+        qty: Number(x.qty)
+      })).filter(x => Number.isFinite(x.productId) && Number.isFinite(x.qty) && x.qty > 0);
+
+      if (!items.length) {
+        alert('商品數量異常，請重新整理購物車');
+        return;
+      }
+
+      // ✅ 注意：你的後端是讀 req.body.order.items
+      const payload = {
+        order: {
+          name,
+          phone,
+          address,
+          payment,
+          items
+        }
+      };
+
+      const res = await axios.post('/api/submitOrder', payload);
+
+      if (res.status === 200 && res.data && res.data.result) {
+        // 綠界 SDK 回傳的 html 會自動 submit
+        $("#pay").html(res.data.result);
+      } else {
+        alert('送出訂單失敗（回應格式不正確）');
+      }
+    } catch (e) {
+      console.error(e);
+      // 常見：未登入 / 被秒踢 / 權限不足
+      const msg = e?.response?.data?.message || '系統發生錯誤，請洽管理員。';
+      alert(msg);
+
+      if (e?.response?.status === 401) {
+        // 交給 axios-auth.js refresh；若仍 401，導回登入
+        location.href = '/login';
+      }
+    } finally {
+      btn.disabled = false;
+    }
+  }
+</script>

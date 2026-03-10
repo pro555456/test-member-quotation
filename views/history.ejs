@@ -1,0 +1,266 @@
+
+<% title = 'TMC 訂單紀錄'; %>
+
+<div class="content">
+  <div class="container mb-5">
+    <div class="d-flex justify-content-between align-items-center mt-3 mb-3">
+      <h2 class="text-danger m-0">訂單紀錄</h2>
+      <button class="btn btn-outline-secondary" onclick="reloadHistory()">重新整理</button>
+    </div>
+
+    <div id="hintBox" class="alert alert-info py-2" style="display:none;"></div>
+
+    <table id="ordersTable" class="table table-striped table-bordered">
+      <thead>
+        <tr>
+          <th style="width:90px;">訂單編號</th>
+          <th style="width:140px;">建立時間</th>
+          <th style="width:120px;">狀態</th>
+          <th style="width:120px;">金額</th>
+          <th>收件資訊</th>
+        </tr>
+      </thead>
+      <tbody id="ordersBody"></tbody>
+    </table>
+  </div>
+</div>
+
+<!-- 訂單明細 Modal（可選，但企業版常見） -->
+<div class="modal fade" id="detailModal" tabindex="-1">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">訂單詳情</h5>
+        <button type="button" class="close" data-dismiss="modal">&times;</button>
+      </div>
+
+      <div class="modal-body">
+        <div id="detailBox" class="mb-3"></div>
+        <table class="table table-sm table-bordered">
+          <thead>
+            <tr>
+              <th style="width:90px;">商品ID</th>
+              <th>品名</th>
+              <th style="width:90px;">數量</th>
+              <th style="width:120px;">單價</th>
+              <th style="width:120px;">小計</th>
+            </tr>
+          </thead>
+          <tbody id="detailItems"></tbody>
+        </table>
+      </div>
+
+      <div class="modal-footer">
+        <button class="btn btn-secondary" data-dismiss="modal">關閉</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  let dt = null;
+  let me = null;
+
+  function showHint(msg, type='info') {
+    const box = document.getElementById('hintBox');
+    box.className = 'alert alert-' + type + ' py-2';
+    box.style.display = 'block';
+    box.innerText = msg;
+  }
+  function hideHint() {
+    const box = document.getElementById('hintBox');
+    box.style.display = 'none';
+    box.innerText = '';
+  }
+
+  function escapeHtml(str) {
+    return String(str ?? '').replace(/[&<>"']/g, (m) => ({
+      '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'
+    }[m]));
+  }
+
+  function fmtStatus(s) {
+    // 依你資料庫狀態自行對照；先做常用映射
+    const map = {
+      '0': 'Pending',
+      '1': 'Pending',
+      'PAID': 'Paid',
+      'PENDING': 'Pending',
+      'CANCEL': 'Cancelled',
+      'CANCELLED': 'Cancelled',
+      '2': 'Paid',
+      '3': 'Cancelled',
+    };
+    const key = String(s ?? '');
+    return map[key] || key || '—';
+  }
+
+  function fmtMoney(n) {
+    const x = Number(n || 0);
+    return isFinite(x) ? x.toLocaleString('zh-Hant-TW') : '0';
+  }
+
+  async function ensureLoginOrRedirect() {
+    try {
+      const r = await axios.get('/api/me'); // ✅ 會吃 axios-auth interceptor
+      me = r.data.user;
+      return true;
+    } catch (e) {
+      // refresh 後仍 401 → 被秒踢/未登入
+      location.href = '/login';
+      return false;
+    }
+  }
+
+  async function loadOrders() {
+    hideHint();
+    showHint('載入中...', 'info');
+
+    // ✅ 你後端若叫 /api/history 就用它；若叫 /api/orders/history 自行改這行
+    const res = await axios.get('/api/history');
+
+    const orders = res.data?.orders || res.data?.history || res.data?.orderList || [];
+    renderOrders(orders);
+
+    if (!orders.length) {
+      showHint('目前沒有訂單紀錄。', 'secondary');
+    } else {
+      hideHint();
+    }
+  }
+
+  function renderOrders(orders) {
+    const rows = orders.map(o => {
+      const id = o.id ?? o.order_id ?? '';
+      const created = o.create_date || o.created_at || '';
+      const status = fmtStatus(o.status);
+      const total = fmtMoney(o.total);
+
+      const recv = [
+        o.cust_name ? `收件人：${escapeHtml(o.cust_name)}` : '',
+        o.phone ? `電話：${escapeHtml(o.phone)}` : '',
+        o.address ? `地址：${escapeHtml(o.address)}` : ''
+      ].filter(Boolean).join('<br>') || '—';
+
+      // ✅ 如果你有提供 /api/history/:id 或 /api/orders/:id/items，可開「詳情」
+      const btn = `<button class="btn btn-sm btn-outline-primary" onclick="openDetail(${id})">詳情</button>`;
+
+      return [
+        id,
+        escapeHtml(created),
+        escapeHtml(status),
+        '$ ' + escapeHtml(total),
+        recv + `<div class="mt-2">${btn}</div>`
+      ];
+    });
+
+    if (!dt) {
+      dt = $('#ordersTable').DataTable({
+        info: false,
+        searching: true,
+        paging: true,
+        ordering: false,
+        data: rows,
+        columns: [
+          { title: '訂單編號' },
+          { title: '建立時間' },
+          { title: '狀態' },
+          { title: '金額' },
+          { title: '收件資訊' }
+        ],
+        language: {
+          emptyTable: '尚無訂單紀錄',
+        }
+      });
+    } else {
+      dt.clear();
+      dt.rows.add(rows);
+      dt.draw(false);
+    }
+  }
+
+  async function reloadHistory() {
+    const ok = await ensureLoginOrRedirect();
+    if (!ok) return;
+
+    try {
+      await loadOrders();
+    } catch (e) {
+      console.error(e);
+      const msg = e?.response?.data?.message || '載入失敗（可能被停用或未登入）';
+      showHint(msg, 'danger');
+
+      if (e?.response?.status === 401) {
+        location.href = '/login';
+      }
+    }
+  }
+
+  // ====== 訂單詳情（可選） ======
+  // 你若目前沒有此 API，可以先保留 UI，之後補 API 再啟用
+  async function openDetail(orderId) {
+    if (!orderId) return;
+
+    try {
+      // ✅ 你後端若是 /api/history/:id 改這行
+      // 期待回傳：{ order, items: [{productId,name,qty,price,subTotal}] }
+      const res = await axios.get(`/api/history/${orderId}`);
+      const order = res.data?.order || {};
+      const items = res.data?.items || [];
+
+      document.getElementById('detailBox').innerHTML = `
+        <div class="border p-2">
+          <div><b>訂單編號：</b>${escapeHtml(order.id || orderId)}</div>
+          <div><b>建立時間：</b>${escapeHtml(order.create_date || order.created_at || '')}</div>
+          <div><b>狀態：</b>${escapeHtml(fmtStatus(order.status))}</div>
+          <div><b>金額：</b>$ ${escapeHtml(fmtMoney(order.total))}</div>
+        </div>
+      `;
+
+      let html = '';
+      for (const it of items) {
+        const pid = it.productId ?? it.product_id ?? it.id ?? '';
+        const name = it.name ?? it.product_name ?? '';
+        const qty = it.qty ?? it.quantity ?? 0;
+        const price = it.price ?? it.amount ?? 0;
+        const sub = it.subTotal ?? (Number(price) * Number(qty));
+
+        html += `
+          <tr>
+            <td>${escapeHtml(pid)}</td>
+            <td>${escapeHtml(name)}</td>
+            <td>${escapeHtml(qty)}</td>
+            <td>$ ${escapeHtml(fmtMoney(price))}</td>
+            <td>$ ${escapeHtml(fmtMoney(sub))}</td>
+          </tr>
+        `;
+      }
+      document.getElementById('detailItems').innerHTML = html || `<tr><td colspan="5">無明細</td></tr>`;
+
+      $('#detailModal').modal('show');
+    } catch (e) {
+      console.error(e);
+
+      // 如果你還沒做 /api/history/:id，這裡會 404
+      if (e?.response?.status === 404) {
+        alert('你目前尚未提供「訂單詳情 API」(/api/history/:id)。我可以下一步幫你補齊。');
+        return;
+      }
+
+      const msg = e?.response?.data?.message || '讀取詳情失敗';
+      alert(msg);
+
+      if (e?.response?.status === 401) {
+        location.href = '/login';
+      }
+    }
+  }
+
+  $(document).ready(async () => {
+    const ok = await ensureLoginOrRedirect();
+    if (!ok) return;
+
+    // ✅ 第一次載入
+    await reloadHistory();
+  });
+</script>

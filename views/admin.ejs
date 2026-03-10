@@ -1,0 +1,394 @@
+<!-- ✅ views/admin.ejs（依你原本可行版改，整檔覆蓋）
+
+重點：沒有 script = \...``，避免 layout 取不到 script 變數 -->
+<% title = 'TMC 商城後臺管理 - 產品管理'; %>
+
+<div class="content">
+  <div class="container mb-5">
+    <div class="d-flex align-items-center justify-content-between mt-3">
+      <h2 class="mb-4 text-danger">產品管理</h2>
+      <!-- <div class="text-muted small">History API: <code>/api/history</code></div> -->
+    </div>
+
+    <div class="d-flex justify-content-end">
+      <button class="btn btn-success mb-3" onclick="showAddModal()">新增商品</button>
+    </div>
+
+    <table id="products" class="border-gray table table-striped table-bordered my-3">
+      <thead>
+        <tr>
+          <th>商品名稱</th>
+          <th>定價</th>
+          <th>庫存</th>
+          <th>商品敘述</th>
+          <th>商品圖片</th>
+          <th>商品狀態</th>
+          <th style="width:120px;">修改</th>
+          <th style="width:120px;">刪除</th>
+        </tr>
+      </thead>
+      <tbody class="products-content"></tbody>
+    </table>
+
+    <!-- ✅ 歷史紀錄（不動你原本 products 功能） -->
+
+  <!-- 新增商品 modal -->
+  <div id="addModal" class="modal fade" tabindex="-1" role="dialog" aria-labelledby="addModalLabel" aria-hidden="true">
+    <div class="modal-dialog" role="document">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" id="addModalLabel">新增商品</h5>
+          <button type="button" class="close" data-dismiss="modal" aria-label="Close" onclick="closeAddModal()">
+            <span aria-hidden="true">&times;</span>
+          </button>
+        </div>
+
+        <div class="modal-body">
+          <form id="add-form">
+            <div class="form-group">
+              <label for="add-name" class="col-form-label">商品名稱</label>
+              <input id="add-name" type="text" class="form-control" name="name">
+            </div>
+
+            <div class="form-group">
+              <label for="add-desc" class="col-form-label">商品敘述</label>
+              <input id="add-desc" type="text" class="form-control" name="desc">
+            </div>
+
+            <div class="form-group">
+              <label for="add-amount" class="col-form-label">商品價格</label>
+              <input id="add-amount" type="number" class="form-control" name="amount" min="0">
+            </div>
+
+            <div class="form-group">
+              <label for="add-inventory" class="col-form-label">庫存數量</label>
+              <input id="add-inventory" type="number" class="form-control" name="inventory" min="0">
+            </div>
+
+            <div class="form-group">
+              <label for="add-status" class="col-form-label">商品狀態</label>
+              <select id="add-status" class="form-control" name="status">
+                <option value="A">上架中</option>
+                <option value="S">已下架</option>
+              </select>
+            </div>
+
+            <div class="form-group">
+              <label for="add-img" class="col-form-label">圖片上傳</label>
+              <input id="add-img" type="file" class="form-control" name="img" onchange="onPickFile(event, 'add')">
+              <small class="form-text text-muted">可不選（允許商品先不放圖）</small>
+              <div class="mt-2">
+                <img id="add-preview" src="" style="max-width:120px; display:none;" />
+              </div>
+            </div>
+          </form>
+        </div>
+
+        <div class="modal-footer">
+          <button type="button" class="btn btn-primary" onclick="addSubmit()">確定新增</button>
+          <button type="button" class="btn btn-secondary" data-dismiss="modal" onclick="closeAddModal()">取消</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 修改商品 modal -->
+  <div id="modifyModal" class="modal fade" tabindex="-1" role="dialog" aria-labelledby="modModalLabel" aria-hidden="true">
+    <div class="modal-dialog" role="document">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" id="modModalLabel">修改商品</h5>
+          <button type="button" class="close" data-dismiss="modal" aria-label="Close" onclick="closeModifyModal()">
+            <span aria-hidden="true">&times;</span>
+          </button>
+        </div>
+
+        <div class="modal-body">
+          <form id="mod-form">
+            <div class="form-group">
+              <label for="mod-name" class="col-form-label">商品名稱</label>
+              <input id="mod-name" type="text" class="form-control" name="name">
+            </div>
+
+            <div class="form-group">
+              <label for="mod-desc" class="col-form-label">商品敘述</label>
+              <input id="mod-desc" type="text" class="form-control" name="desc">
+            </div>
+
+            <div class="form-group">
+              <label for="mod-amount" class="col-form-label">商品價格</label>
+              <input id="mod-amount" type="number" class="form-control" name="amount" min="0">
+            </div>
+
+            <div class="form-group">
+              <label for="mod-inventory" class="col-form-label">庫存數量</label>
+              <input id="mod-inventory" type="number" class="form-control" name="inventory" min="0">
+            </div>
+
+            <div class="form-group">
+              <label for="mod-status" class="col-form-label">商品狀態</label>
+              <select id="mod-status" class="form-control" name="status">
+                <option value="A">上架中</option>
+                <option value="S">已下架</option>
+              </select>
+            </div>
+
+            <div class="form-group">
+              <label for="mod-img" class="col-form-label">圖片上傳</label>
+              <input id="mod-img" type="file" class="form-control" name="img" onchange="onPickFile(event, 'mod')">
+              <small class="form-text text-muted">不選就不更新圖片</small>
+              <div class="mt-2">
+                <img id="mod-preview" src="" style="max-width:120px; display:none;" />
+              </div>
+            </div>
+          </form>
+        </div>
+
+        <div class="modal-footer">
+          <button type="button" class="btn btn-primary" onclick="modSubmit()">確定修改</button>
+          <button type="button" class="btn btn-secondary" data-dismiss="modal" onclick="closeModifyModal()">取消</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  let selectedId = null;
+  let addFile = null;
+  let modFile = null;
+
+  let productList = [];
+  let dt = null;
+
+  // history
+  let historyDT = null;
+
+  $(document).ready(function init() {
+    // ✅ 先載入 products（沿用你原本行為）
+    loadProducts().catch((err) => {
+      console.error(err);
+      alert("載入商品失敗（可能權限不足或登入過期）");
+      location.href = "/login";
+    });
+
+    // ✅ history 失敗不影響 products（避免你後台整頁被 history 拖垮）
+    loadHistory().catch((err) => {
+      console.error('loadHistory failed:', err);
+    });
+  });
+
+  async function loadProducts() {
+    const res = await axios.get('/api/products');
+    productList = (res.data && res.data.productList) ? res.data.productList : [];
+    renderTable(productList);
+  }
+
+  function renderTable(list) {
+    const rows = list.map(p => {
+      const imgText = (p.img && String(p.img).length > 20) ? (String(p.img).slice(0, 27) + '...') : 'N/A';
+      const statusText = (p.status === 'A') ? '上架中' : '已下架';
+
+      return [
+        escapeHtml(p.name || ''),
+        Number(p.amount || 0),
+        Number(p.inventory || 0),
+        escapeHtml(p.description || ''),
+        escapeHtml(imgText),
+        statusText,
+        `<button class="btn btn-primary btn-sm" onclick="showModifyModal(${p.id})">修改</button>`,
+        `<button class="btn btn-danger btn-sm" onclick="deleteProduct(${p.id})">刪除</button>`
+      ];
+    });
+
+    if (!dt) {
+      dt = $('#products').DataTable({
+        info: false,
+        data: rows,
+        columns: [
+          { title: '商品名稱' },
+          { title: '定價' },
+          { title: '庫存' },
+          { title: '商品敘述' },
+          { title: '商品圖片' },
+          { title: '商品狀態' },
+          { title: '修改', orderable: false },
+          { title: '刪除', orderable: false },
+        ]
+      });
+    } else {
+      dt.clear();
+      dt.rows.add(rows);
+      dt.draw(false);
+    }
+  }
+
+  async function reloadHistory() {
+    try { await loadHistory(); } catch (e) { console.error(e); }
+  }
+
+  async function loadHistory() {
+    const res = await axios.get('/api/history');
+    const list = (res.data && (res.data.history || res.data.data || res.data)) || [];
+
+    const rows = list.map(r => {
+      const t = r.time || r.created_at || r.date || '';
+      const action = r.action || r.event || '';
+      const detail = r.detail || r.note || r.message || '';
+      return [escapeHtml(t), escapeHtml(action), escapeHtml(detail)];
+    });
+
+    if (!historyDT) {
+      historyDT = $('#history').DataTable({
+        info: false,
+        data: rows,
+        columns: [
+          { title: '時間' },
+          { title: '事件' },
+          { title: '內容' }
+        ],
+        order: [[0, 'desc']]
+      });
+    } else {
+      historyDT.clear();
+      historyDT.rows.add(rows);
+      historyDT.draw(false);
+    }
+  }
+
+  function escapeHtml(str) {
+    return String(str ?? '').replace(/[&<>"']/g, (m) => ({
+      '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'
+    }[m]));
+  }
+
+  function onPickFile(event, mode) {
+    const f = event.target.files && event.target.files[0] ? event.target.files[0] : null;
+    if (mode === 'add') addFile = f;
+    if (mode === 'mod') modFile = f;
+
+    const img = document.getElementById(mode === 'add' ? 'add-preview' : 'mod-preview');
+    if (!f) {
+      img.style.display = 'none';
+      img.src = '';
+      return;
+    }
+    img.src = URL.createObjectURL(f);
+    img.style.display = 'inline-block';
+  }
+
+  function showAddModal() {
+    addFile = null;
+    $('#add-form')[0].reset();
+    $('#add-preview').hide().attr('src', '');
+    $('#add-img').val('');
+    $('#addModal').modal('show');
+  }
+
+  function closeAddModal() {
+    $('#addModal').modal('hide');
+  }
+
+  async function addSubmit() {
+    const name = $('#add-name').val().trim();
+    const desc = $('#add-desc').val().trim();
+    const amount = $('#add-amount').val();
+    const inventory = $('#add-inventory').val();
+    const status = $('#add-status').val();
+
+    if (!name) return alert('請輸入商品名稱');
+
+    const formdata = new FormData();
+    formdata.append('name', name);
+    formdata.append('desc', desc);
+    formdata.append('amount', amount);
+    formdata.append('inventory', inventory);
+    formdata.append('status', status);
+    if (addFile) formdata.append('img', addFile);
+
+    try {
+      // ✅ 沿用你原本可行的新增 API：/api/product (multipart)
+      const res = await axios.post('/api/product', formdata, { headers: { 'Content-Type': 'multipart/form-data' }});
+      if (res.status === 200) {
+        alert('新增成功！');
+        closeAddModal();
+        await loadProducts();
+      } else {
+        alert('新增失敗（請檢查權限/參數）');
+      }
+    } catch (e) {
+      console.error(e);
+      alert(e?.response?.data?.message || '新增失敗（可能權限不足或登入過期）');
+    }
+  }
+
+  function showModifyModal(id) {
+    const p = productList.find(x => Number(x.id) === Number(id));
+    if (!p) return alert('找不到商品');
+
+    selectedId = Number(p.id);
+    modFile = null;
+
+    $('#mod-name').val(p.name || '');
+    $('#mod-desc').val(p.description || '');
+    $('#mod-amount').val(Number(p.amount || 0));
+    $('#mod-inventory').val(Number(p.inventory || 0));
+    $('#mod-status').val(p.status || 'A');
+
+    $('#mod-preview').hide().attr('src', '');
+    $('#mod-img').val('');
+
+    $('#modifyModal').modal('show');
+  }
+
+  function closeModifyModal() {
+    $('#modifyModal').modal('hide');
+  }
+
+  async function modSubmit() {
+    if (!selectedId) return;
+
+    const formdata = new FormData();
+    formdata.append('id', selectedId);
+    formdata.append('name', $('#mod-name').val().trim());
+    formdata.append('desc', $('#mod-desc').val().trim());
+    formdata.append('amount', $('#mod-amount').val());
+    formdata.append('inventory', $('#mod-inventory').val());
+    formdata.append('status', $('#mod-status').val());
+    if (modFile) formdata.append('img', modFile);
+
+    try {
+      const res = await axios.put(`/api/product/${selectedId}`, formdata, { headers: { 'Content-Type': 'multipart/form-data' }});
+      if (res.status === 200) {
+        alert('修改成功！');
+        closeModifyModal();
+        await loadProducts();
+      } else {
+        alert('修改失敗（請檢查權限/參數）');
+      }
+    } catch (e) {
+      console.error(e);
+      alert(e?.response?.data?.message || '修改失敗（可能權限不足或登入過期）');
+    }
+  }
+
+  async function deleteProduct(id) {
+    const p = productList.find(x => Number(x.id) === Number(id));
+    if (!p) return alert('找不到商品');
+
+    if (!confirm(`確定刪除「${p.name}」？`)) return;
+
+    try {
+      const res = await axios.delete(`/api/product/${id}`);
+      if (res.status === 200) {
+        alert('刪除成功！');
+        await loadProducts();
+      } else {
+        alert('刪除失敗（請檢查權限）');
+      }
+    } catch (e) {
+      console.error(e);
+      alert(e?.response?.data?.message || '刪除失敗（可能權限不足或登入過期）');
+    }
+  }
+</script>
