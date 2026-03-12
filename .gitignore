@@ -1,4 +1,4 @@
-﻿# Dependencies
+# Dependencies
 node_modules/
 npm-debug.log
 yarn-error.log
@@ -9,16 +9,31 @@ yarn-error.log
 .env.local
 .env.*.local
 
-# Build directory
+# Build output
 dist/
 build/
-
-# macOS
-.DS_Store
+coverage/
 
 # Logs
 *.log
 
-# Temporary uploads
-tmp/
+# OS / editor junk
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
 
+# Python cache
+__pycache__/
+*.pyc
+
+# Temporary uploads and local import artifacts
+tmp/
+tmp-*.xlsx
+tmp-*.xlsm
+tmp-*.xltx
+tmp-*.xltm
+quotes-preview.*
+
+# Local export / release notes scratch files
+release-notes-draft.*

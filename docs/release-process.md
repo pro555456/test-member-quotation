@@ -1,0 +1,63 @@
+# Release Process
+
+## Commit message convention
+Use short Conventional Commit style messages:
+- `feat: add customer/platform cross analytics`
+- `fix: repair quote import date parsing`
+- `docs: update deployment notes`
+- `refactor: split dashboard service queries`
+- `chore: refresh gitignore and release scripts`
+
+Recommended prefixes:
+- `feat`: new user-facing capability
+- `fix`: bug fix or regression fix
+- `refactor`: internal code cleanup without behavior change
+- `docs`: documentation only
+- `test`: add or update tests
+- `chore`: tooling, dependencies, gitignore, release prep
+
+## Daily commit flow
+1. Check current changes:
+   `git status`
+2. Run local verification:
+   `npm test`
+   `npm run smoke`
+3. Stage only the intended files:
+   `git add <files>`
+4. Commit with a focused message:
+   `git commit -m "feat: add admin analytics export sheets"`
+5. Push to GitHub:
+   `git push origin main`
+
+## Release flow
+1. Make sure `main` is clean and up to date:
+   `git checkout main`
+   `git pull --rebase origin main`
+   `git status`
+2. Run the release gate:
+   `npm run release:check`
+3. Bump the version:
+   Patch release:
+   `npm run release:patch`
+
+   Minor release:
+   `npm run release:minor`
+
+   Major release:
+   `npm run release:major`
+4. Push the commit and tag:
+   `git push origin main --follow-tags`
+5. Draft GitHub release notes from the tag if needed.
+
+## Suggested release checklist
+- Database migrations reviewed
+- Import/export flows tested
+- Admin analytics page loads successfully
+- Excel export opens with all worksheets
+- Login and admin permissions verified
+- `.env.example` matches required runtime keys
+
+## Notes
+- `npm version` creates a git commit and tag automatically.
+- Keep temporary import files out of version control via `.gitignore`.
+- If a release includes schema changes, run `npm run migrate` before smoke testing production.

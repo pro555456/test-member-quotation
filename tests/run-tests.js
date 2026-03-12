@@ -1,5 +1,6 @@
-﻿const assert = require("node:assert/strict");
+const assert = require("node:assert/strict");
 const http = require("node:http");
+const db = require("../connection/mySqlConnection");
 
 async function run(name, fn) {
   try {
@@ -47,8 +48,8 @@ async function main() {
     const payload = quoteService._internals.normalizeQuotePayload({
       quoteDate: "2025-02-04",
       customerOrderNo: "WI114020401a",
-      customerName: "易亨",
-      gameTitle: "我獨自成仙",
+      customerName: "����",
+      gameTitle: "�ڿW�ۦ��P",
       quantity: 2,
       unitPriceUntaxed: 14000,
       platforms: { ios: true, android: true },
@@ -82,7 +83,7 @@ async function main() {
       const loginRes = await fetch(`http://127.0.0.1:${port}/`);
       const loginHtml = await loginRes.text();
       assert.equal(loginRes.status, 200);
-      assert.match(loginHtml, /遊戲檢測報價平台/);
+      assert.equal(loginHtml.includes("Game QA Hub"), true);
 
       const indexRes = await fetch(`http://127.0.0.1:${port}/index`, { redirect: "manual" });
       assert.equal(indexRes.status, 302);
@@ -101,7 +102,17 @@ async function main() {
   }
 }
 
-main().catch((error) => {
-  console.error(error);
-  process.exitCode = 1;
-});
+main()
+  .catch((error) => {
+    console.error(error);
+    process.exitCode = 1;
+  })
+  .finally(async () => {
+    try {
+      await db.pool.end();
+    } catch {
+      // Ignore pool shutdown errors in tests.
+    }
+  });
+
+
