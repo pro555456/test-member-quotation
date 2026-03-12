@@ -1,62 +1,164 @@
-/* 你現在整個 auth 流程頁面已經一致
-你目前應該有：
-login.ejs
-register.ejs
-forgot_password.ejs
-reset_password.ejs
-verify_register_email.ejs
-verify_email.ejs
-全部都共用：
-basic/auth_card.ejs
-msgBox
-一致的卡片外觀
-一致的按鈕 / 連結風格
-如果你要，我下一步可以再幫你把 這六頁的共用 style 抽到一個獨立 CSS 檔，這樣每個 EJS 就不用重複貼同一段 <style>。
-把 這六頁的共用 style 抽到一個獨立 CSS 檔
-可以，這樣會更乾淨。
-做法是把這六頁共用的 auth card 樣式抽到一個獨立 CSS，例如：
-public/stylesheets/auth.css
-然後讓 layout.ejs 全站載入，或只在這六頁載入。
-你現在最省事的做法是：直接在 layout.ejs 載入一次。
-1) 新增檔案：public/stylesheets/auth.css
-直接建立這個檔案，內容如下 */
-
-.small-muted {
-  font-size: 12px;
-  color: #666;
-}
-
-.auth-wrap {
-  max-width: 680px;
+﻿.auth-wrap {
+  max-width: 760px;
   margin: 0 auto;
 }
 
 .auth-wrap.auth-wrap-sm {
-  max-width: 520px;
+  max-width: 540px;
 }
 
 .auth-wrap.auth-wrap-md {
-  max-width: 560px;
+  max-width: 620px;
 }
 
 .auth-card {
-  border: 1px solid #e9ecef;
-  border-radius: 12px;
-  background: #fff;
-  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.04);
+  position: relative;
+  overflow: hidden;
+  border: 1px solid rgba(23, 33, 43, 0.1);
+  border-radius: 28px;
+  background:
+    radial-gradient(circle at top right, rgba(244, 162, 97, 0.18), transparent 30%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.96), rgba(255, 255, 255, 0.92));
+  box-shadow: 0 24px 60px rgba(23, 33, 43, 0.1);
+}
+
+.auth-card::after {
+  content: '';
+  position: absolute;
+  inset: auto -40px -60px auto;
+  width: 180px;
+  height: 180px;
+  border-radius: 50%;
+  background: rgba(13, 92, 99, 0.08);
+  pointer-events: none;
 }
 
 .auth-title {
-  font-weight: 700;
-  letter-spacing: 0.5px;
+  position: relative;
+  z-index: 1;
+  font-weight: 800;
+  letter-spacing: 0.03em;
+  color: var(--brand-deep);
+}
+
+.small-muted {
+  color: var(--muted);
+  font-size: 0.92rem;
+  line-height: 1.6;
 }
 
 .auth-hr {
-  border-top: 1px solid #eee;
-  margin: 16px 0;
+  border-top: 1px solid rgba(23, 33, 43, 0.08);
+  margin: 1.25rem 0;
 }
 
-.auth-mono {
-  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas,
-    "Liberation Mono", "Courier New", monospace;
+.auth-card .form-group label {
+  font-weight: 700;
+  color: var(--ink);
+}
+
+.auth-card .form-control,
+.auth-card .form-control-file {
+  border-radius: 14px;
+  border: 1px solid rgba(23, 33, 43, 0.12);
+  background: rgba(255, 255, 255, 0.96);
+  min-height: 46px;
+  box-shadow: none;
+}
+
+.auth-card .form-control:focus {
+  border-color: rgba(13, 92, 99, 0.55);
+  box-shadow: 0 0 0 0.2rem rgba(13, 92, 99, 0.12);
+}
+
+.auth-card .btn-danger,
+.auth-card .btn-primary {
+  border: none;
+  border-radius: 999px;
+  padding: 0.7rem 1.4rem;
+  font-weight: 700;
+  background: linear-gradient(135deg, var(--brand-deep), var(--brand));
+  box-shadow: 0 14px 28px rgba(13, 92, 99, 0.18);
+}
+
+.auth-card .btn-danger:hover,
+.auth-card .btn-primary:hover {
+  filter: brightness(1.04);
+}
+
+.auth-card .btn-outline-secondary,
+.auth-card .btn-outline-primary {
+  border-radius: 999px;
+  padding: 0.68rem 1.35rem;
+  font-weight: 700;
+}
+
+.auth-card a {
+  color: var(--brand);
+  font-weight: 700;
+}
+
+.auth-card .alert {
+  border-radius: 16px;
+  border: none;
+}
+
+.auth-card .text-center .btn + .btn {
+  margin-left: 0.5rem;
+}
+
+.profile-shell {
+  max-width: 1120px;
+  margin: 0 auto;
+}
+
+.profile-grid {
+  display: grid;
+  grid-template-columns: 1.1fr 1.4fr;
+  gap: 1.5rem;
+}
+
+.profile-side {
+  display: grid;
+  gap: 1rem;
+}
+
+.profile-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.35rem 0.8rem;
+  border-radius: 999px;
+  background: rgba(13, 92, 99, 0.1);
+  color: var(--brand-deep);
+  font-weight: 700;
+  font-size: 0.85rem;
+}
+
+.profile-meta {
+  display: grid;
+  gap: 0.85rem;
+}
+
+.profile-meta-item {
+  padding: 0.95rem 1rem;
+  border-radius: 16px;
+  background: rgba(13, 92, 99, 0.05);
+}
+
+.profile-meta-label {
+  color: var(--muted);
+  font-size: 0.82rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.profile-meta-value {
+  font-weight: 700;
+  margin-top: 0.25rem;
+}
+
+@media (max-width: 991px) {
+  .profile-grid {
+    grid-template-columns: 1fr;
+  }
 }

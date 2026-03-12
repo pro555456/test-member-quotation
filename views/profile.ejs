@@ -1,89 +1,104 @@
 ﻿<%
   style = `
   <style>
-    .small-muted { font-size: 12px; color: #666; }
+    .profile-actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.75rem;
+    }
   </style>
   `;
 %>
 
-<div class="container my-4" style="max-width: 920px;">
-  <div class="d-flex justify-content-between align-items-center mb-3">
-    <h2 class="text-danger m-0">我的資料</h2>
-    <div>
-      <a class="btn btn-outline-secondary" href="/dashboard">回首頁</a>
+<div class="profile-shell">
+  <div class="hero-panel mb-4">
+    <div class="row align-items-end">
+      <div class="col-lg-8">
+        <div class="section-kicker mb-2">Account Center</div>
+        <h1 class="mb-3">我的資料與驗證狀態</h1>
+        <p class="mb-0">在這裡維護聯絡資料、Email 驗證狀態與個人帳號資訊，讓報價與通知流程保持正確。</p>
+      </div>
+      <div class="col-lg-4 mt-3 mt-lg-0 text-lg-right">
+        <a class="btn btn-light mr-2" href="/dashboard">返回儀表板</a>
+        <a class="btn btn-outline-light" href="/quotes">查看報價單</a>
+      </div>
     </div>
   </div>
 
   <div id="msgBox" class="alert" style="display:none;"></div>
 
-  <div class="border p-3">
-    <div class="form-row">
-      <div class="form-group col-md-4">
-        <label>帳號（不可修改）</label>
-        <input id="pAccount" class="form-control" disabled>
-        <div id="accountHint" class="small-muted mt-1"></div>
-      </div>
-
-      <div class="form-group col-md-4">
-        <label>姓名</label>
-        <input id="pName" class="form-control" maxlength="50">
-        <div class="small-muted mt-1">最多 50 字</div>
-      </div>
-
-      <div class="form-group col-md-4">
-        <label>角色/類型</label>
-        <input id="pType" class="form-control" disabled>
-        <div class="small-muted mt-1">由角色決定</div>
-      </div>
-    </div>
-
-    <div class="form-row">
-      <div class="form-group col-md-6">
-        <label>手機（必填）</label>
-        <input id="pCell" class="form-control" maxlength="15" placeholder="例：09xxxxxxxx">
-      </div>
-
-      <div class="form-group col-md-6">
-        <label>Email（必填）</label>
-        <input id="pEmail" class="form-control" maxlength="200" placeholder="例：name@example.com">
-        <div id="emailHint" class="small-muted mt-1">Email 規則載入中...</div>
-      </div>
-    </div>
-
-    <!-- ✅ Email 二次確認（企業常見） -->
-    <div class="form-row">
-      <div class="form-group col-md-6">
-        <label>再次輸入 Email（確認）</label>
-        <input id="pEmail2" class="form-control" maxlength="200" placeholder="請再次輸入 Email">
-        <div class="small-muted mt-1">避免輸入錯誤（兩次需一致）</div>
-      </div>
-
-      <div class="form-group col-md-6">
-        <label>待驗證 Email</label>
-        <input id="pPendingEmail" class="form-control" disabled placeholder="目前沒有待驗證">
-        <div id="pendingHint" class="small-muted mt-1"></div>
-
-        <div id="pendingActions" class="mt-2" style="display:none;">
-          <button id="btnResendVerify" class="btn btn-outline-primary btn-sm" onclick="resendVerifyEmail()">重新寄送驗證信</button>
-          <span class="small-muted ml-2">若未收到信，請先檢查垃圾信</span>
+  <div class="profile-grid">
+    <div class="profile-side">
+      <div class="data-card">
+        <div class="section-kicker">Profile Summary</div>
+        <div class="section-title mb-3">帳號摘要</div>
+        <div class="profile-badge" id="pType">載入中</div>
+        <div class="profile-meta mt-3">
+          <div class="profile-meta-item">
+            <div class="profile-meta-label">帳號</div>
+            <div class="profile-meta-value auth-mono" id="pAccount"></div>
+          </div>
+          <div class="profile-meta-item">
+            <div class="profile-meta-label">建立時間</div>
+            <div class="profile-meta-value" id="pCreate"></div>
+          </div>
+          <div class="profile-meta-item">
+            <div class="profile-meta-label">最後更新</div>
+            <div class="profile-meta-value" id="pUpdate"></div>
+          </div>
         </div>
       </div>
 
-      <!-- <div class="form-group col-md-6">
-        <label>待驗證 Email</label>
-        <input id="pPendingEmail" class="form-control" disabled placeholder="目前沒有待驗證">
-        <div id="pendingHint" class="small-muted mt-1"></div>
-      </div> -->
+      <div class="data-card">
+        <div class="section-kicker">Verification</div>
+        <div class="section-title mb-3">Email 驗證狀態</div>
+        <div class="form-group mb-2">
+          <label>待驗證 Email</label>
+          <input id="pPendingEmail" class="form-control" disabled placeholder="目前沒有待驗證 Email">
+        </div>
+        <div id="pendingHint" class="form-note mb-3"></div>
+        <div id="pendingActions" style="display:none;">
+          <button id="btnResendVerify" class="btn btn-outline-primary btn-sm" onclick="resendVerifyEmail()">重新寄送驗證信</button>
+          <div class="form-note mt-2">若未收到信件，請先確認垃圾郵件匣。</div>
+        </div>
+      </div>
     </div>
 
-    <div class="small-muted mt-2">
-      建立時間：<span id="pCreate"></span>　
-      更新時間：<span id="pUpdate"></span>
+    <div class="data-card">
+      <div class="section-kicker">Editable Fields</div>
+      <div class="section-title mb-3">可更新資料</div>
+
+      <div class="form-row">
+        <div class="form-group col-md-6">
+          <label for="pName">姓名</label>
+          <input id="pName" class="form-control" maxlength="50" placeholder="請輸入姓名">
+          <div class="form-note mt-1">最多 50 個字元。</div>
+        </div>
+        <div class="form-group col-md-6">
+          <label for="pCell">手機</label>
+          <input id="pCell" class="form-control" maxlength="15" placeholder="例如 09xxxxxxxx">
+          <div class="form-note mt-1">手機為必填欄位。</div>
+        </div>
+      </div>
+
+      <div class="form-row">
+        <div class="form-group col-md-6">
+          <label for="pEmail">Email</label>
+          <input id="pEmail" class="form-control" maxlength="200" placeholder="例如 name@example.com">
+          <div id="emailHint" class="form-note mt-1">Email 規則載入中…</div>
+        </div>
+        <div class="form-group col-md-6">
+          <label for="pEmail2">再次輸入 Email</label>
+          <input id="pEmail2" class="form-control" maxlength="200" placeholder="請再次輸入 Email 進行確認">
+          <div class="form-note mt-1">兩次輸入必須一致，避免通知寄錯。</div>
+        </div>
+      </div>
+
+      <div class="profile-actions mt-3">
+        <button id="btnSave" class="btn btn-primary" onclick="saveProfile()">儲存變更</button>
+        <button class="btn btn-outline-secondary" type="button" onclick="loadMe()">重新載入</button>
+      </div>
     </div>
-
-    <hr class="my-3"/>
-
-    <button id="btnSave" class="btn btn-primary" onclick="saveProfile()">儲存</button>
   </div>
 </div>
 
@@ -93,18 +108,18 @@
     ACCOUNT_MAX: 32,
     EMAIL_MAX: 200,
     PWD_MIN: 10,
-    PWD_MAX: 72
+    PWD_MAX: 72,
   };
 
   let me = null;
 
-  function showMsg(msg, type='danger', autoHideMs = 0) {
+  function showMsg(msg, type = 'danger', autoHideMs = 0) {
     const box = document.getElementById('msgBox');
     box.style.display = 'block';
-    box.classList.remove('alert-danger','alert-success','alert-warning','alert-info');
+    box.classList.remove('alert-danger', 'alert-success', 'alert-warning', 'alert-info');
     box.classList.add('alert-' + type);
     box.innerText = msg || '';
-    box.scrollIntoView({ behavior:'smooth', block:'nearest' });
+    box.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
 
     if (autoHideMs > 0) {
       setTimeout(() => {
@@ -115,15 +130,14 @@
   }
 
   function showError(msg) { showMsg(msg, 'danger'); }
-  function showSuccess(msg) { showMsg(msg, 'success', 800); }  // ✅ 成功訊息停留 0.8 秒後消失
-
+  function showSuccess(msg) { showMsg(msg, 'success', 900); }
   function clearMsg() {
     const box = document.getElementById('msgBox');
     box.style.display = 'none';
     box.innerText = '';
   }
 
-  function getApiErrorMessage(err, fallback='操作失敗') {
+  function getApiErrorMessage(err, fallback = '操作失敗') {
     const data = err?.response?.data;
     return data?.message || err?.message || fallback;
   }
@@ -141,16 +155,10 @@
   }
 
   function applySecurityConfigToUI() {
-    const accHint = document.getElementById('accountHint');
-    if (accHint) accHint.innerText = `帳號規則：${securityCfg.ACCOUNT_MIN}～${securityCfg.ACCOUNT_MAX}碼（由系統建立，這裡不提供修改）`;
-
-    const em = document.getElementById('pEmail');
-    const em2 = document.getElementById('pEmail2');
-    if (em) em.setAttribute('maxlength', String(securityCfg.EMAIL_MAX));
-    if (em2) em2.setAttribute('maxlength', String(securityCfg.EMAIL_MAX));
-
     const emailHint = document.getElementById('emailHint');
-    if (emailHint) emailHint.innerText = `Email：最長 ${securityCfg.EMAIL_MAX} 字，需為合法 Email 格式`;
+    if (emailHint) {
+      emailHint.innerText = `Email 最長 ${securityCfg.EMAIL_MAX} 字元，需為合法 Email 格式。`;
+    }
   }
 
   async function loadSecurityConfig() {
@@ -161,9 +169,9 @@
         ACCOUNT_MAX: Number(data.ACCOUNT_MAX) || securityCfg.ACCOUNT_MAX,
         EMAIL_MAX: Number(data.EMAIL_MAX) || securityCfg.EMAIL_MAX,
         PWD_MIN: Number(data.PWD_MIN) || securityCfg.PWD_MIN,
-        PWD_MAX: Number(data.PWD_MAX) || securityCfg.PWD_MAX
+        PWD_MAX: Number(data.PWD_MAX) || securityCfg.PWD_MAX,
       };
-    } catch (e) {
+    } catch (_) {
       console.warn('[security/config] fallback to defaults');
     } finally {
       applySecurityConfigToUI();
@@ -177,42 +185,27 @@
 
     if (!pendingEmail) {
       p.value = '';
-      p.placeholder = '目前沒有待驗證';
+      p.placeholder = '目前沒有待驗證 Email';
       hint.innerText = '';
       if (actions) actions.style.display = 'none';
       return;
     }
 
     p.value = pendingEmail.email || '';
-    hint.innerText = `待驗證有效期限：${pendingEmail.expires_at || ''}（完成驗證後才會生效）`;
+    hint.innerText = `待驗證有效期限：${pendingEmail.expires_at || ''}`;
     if (actions) actions.style.display = 'block';
   }
-
-  // function renderPending(pendingEmail) {
-  //   const p = document.getElementById('pPendingEmail');
-  //   const hint = document.getElementById('pendingHint');
-
-  //   if (!pendingEmail) {
-  //     p.value = '';
-  //     p.placeholder = '目前沒有待驗證';
-  //     hint.innerText = '';
-  //     return;
-  //   }
-
-  //   p.value = pendingEmail.email || '';
-  //   hint.innerText = `待驗證有效期限：${pendingEmail.expires_at || ''}（完成驗證後才會生效）`;
-  // }
 
   async function loadMe() {
     const data = await apiRequest('get', '/api/me/profile');
     me = data.user;
 
-    document.getElementById('pAccount').value = me.account || '';
+    document.getElementById('pAccount').innerText = me.account || '';
     document.getElementById('pName').value = me.name || '';
     document.getElementById('pCell').value = me.cellphone || '';
     document.getElementById('pEmail').value = me.email || '';
     document.getElementById('pEmail2').value = me.email || '';
-    document.getElementById('pType').value = me.type || '';
+    document.getElementById('pType').innerText = me.type || '一般帳號';
     document.getElementById('pCreate').innerText = me.create_date || '';
     document.getElementById('pUpdate').innerText = me.update_date || '';
 
@@ -236,15 +229,13 @@
 
       const res = await apiRequest('patch', '/api/me/profile', { name, cellphone, email });
 
-      // ✅ 可能回 200 success 或 202 pending（寄驗證信）
       if (res.status === 'pending') {
-        showMsg(res.message || '已寄出驗證信，請完成驗證後才會生效', 'info', 1200);
+        showMsg(res.message || '已寄出驗證信，請完成驗證後才會生效。', 'info', 1200);
       } else {
         showSuccess('已更新個人資料');
       }
 
       await loadMe();
-
     } finally {
       btn.disabled = false;
     }
@@ -256,30 +247,21 @@
 
     try {
       const res = await apiRequest('post', '/api/me/email/resend');
-
-      // res 可能是 {status:'success'} 或 {status:'pending'}（SMTP 失敗）
       if (res.status === 'success') {
         showSuccess(res.message || '已重新寄送驗證信');
       } else {
-        // pending or other
-        showMsg(res.message || '處理完成，請檢查信箱', 'info', 1200);
+        showMsg(res.message || '處理完成，請檢查信箱。', 'info', 1200);
       }
-
       await loadMe();
-    } catch (e) {
-      // apiRequest 已 showError
     } finally {
       if (btn) btn.disabled = false;
     }
   }
 
-
   function checkEmailVerifiedFlag() {
     const params = new URLSearchParams(window.location.search);
     if (params.get('verified') === '1') {
       showSuccess('Email 已驗證');
-
-      // 清掉 query，避免重新整理又跳一次
       setTimeout(() => {
         const url = new URL(window.location.href);
         url.searchParams.delete('verified');
@@ -290,18 +272,10 @@
 
   $(document).ready(() => {
     Promise.all([loadSecurityConfig(), loadMe()]).then(() => {
-      checkEmailVerifiedFlag(); // ✅ 驗證成功提示
+      checkEmailVerifiedFlag();
     }).catch(() => {
       alert('權限不足或系統錯誤');
       location.href = '/login';
     });
   });
-
-  // $(document).ready(() => {
-  //   Promise.all([loadSecurityConfig(), loadMe()]).catch(() => {
-  //     alert('權限不足或系統錯誤');
-  //     location.href='/login';
-  //   });
-  // });
 </script>
-

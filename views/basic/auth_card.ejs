@@ -1,15 +1,6 @@
-<!-- 幫我把 basic/auth_card.ejs 也整理成「最終可覆蓋版」，順便確認它支援這 6 頁現在用到的 authWrapClass / titleText / subtitleText / body。
-下面是 views/basic/auth_card.ejs 的最終可覆蓋版。
-它已支援你現在 6 頁用到的：
-authWrapClass
-titleText
-subtitleText
-body
-而且會安全處理未傳值的情況。
-views/basic/auth_card.ejs 可覆蓋整檔版 -->
-<%
+﻿<%
   const wrapClass = typeof authWrapClass !== 'undefined' ? authWrapClass : '';
-  const cardTitle = typeof titleText !== 'undefined' ? titleText : '會員中心';
+  const cardTitle = typeof titleText !== 'undefined' ? titleText : '帳號入口';
   const cardSubtitle = typeof subtitleText !== 'undefined' ? subtitleText : '';
   const cardBody = typeof body !== 'undefined' ? body : '';
 %>

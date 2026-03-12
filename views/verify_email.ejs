@@ -1,26 +1,26 @@
-﻿<!-- 5) views/verify_email.ejs -->
- <%- include('./basic/auth_card.ejs', {
+﻿<%- include('./basic/auth_card.ejs', {
   authWrapClass: '',
-  titleText: 'Email 撽?',
-  subtitleText: '甇?撽??函???Email嚗?蝔?,
+  titleText: 'Email 驗證',
+  subtitleText: '系統正在驗證你的 Email，完成後會自動導回個人資料頁。',
   body: `
-    <div id="subtitle" class="small-muted mb-3">撽?銝哨?隢???/div>
+    <div id="subtitle" class="small-muted mb-3">請稍候，系統正在驗證中。</div>
 
     <div class="text-center mt-3">
-      <a class="btn btn-outline-secondary" href="/profile">??????/a>
-      <a class="btn btn-outline-secondary ml-2" href="/dashboard">????/a>
+      <a class="btn btn-outline-secondary" href="/profile">返回我的資料</a>
+      <a class="btn btn-outline-secondary ml-2" href="/dashboard">返回儀表板</a>
     </div>
 
     <div class="small-muted mt-3 text-center">
-      撽???敺??芸?頝喳???????    </div>
+      若驗證失敗，請稍後重試，或重新申請驗證信。
+    </div>
   `
 }) %>
 
 <script>
-  function showMsg(msg, type='danger', autoHideMs=0) {
+  function showMsg(msg, type = 'danger', autoHideMs = 0) {
     const box = document.getElementById('msgBox');
     box.style.display = 'block';
-    box.classList.remove('alert-danger','alert-success','alert-warning','alert-info');
+    box.classList.remove('alert-danger', 'alert-success', 'alert-warning', 'alert-info');
     box.classList.add('alert-' + type);
     box.innerText = msg || '';
     box.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
@@ -32,7 +32,7 @@
     }
   }
 
-  function showSuccess(msg) { showMsg(msg, 'success', 800); }
+  function showSuccess(msg) { showMsg(msg, 'success', 1000); }
   function showInfo(msg) { showMsg(msg, 'info'); }
   function showError(msg) { showMsg(msg, 'danger'); }
 
@@ -41,7 +41,7 @@
     if (el) el.innerText = text || '';
   }
 
-  function getApiErrorMessage(err, fallback='撽?憭望?') {
+  function getApiErrorMessage(err, fallback = 'Email 驗證失敗') {
     const data = err?.response?.data;
     return data?.message || err?.message || fallback;
   }
@@ -51,28 +51,27 @@
     const token = params.get('token') || '';
 
     if (!token) {
-      setSubtitle('蝻箏? token嚗?蝣箄?????臬摰');
-      showError('蝻箏? token嚗?蝣箄?????臬摰');
+      setSubtitle('缺少驗證 token，無法進行 Email 驗證。');
+      showError('缺少驗證 token，無法進行 Email 驗證。');
       return;
     }
 
     try {
-      setSubtitle('撽?銝哨?隢???);
-      showInfo('撽?銝凌?);
+      setSubtitle('系統正在驗證你的 Email，請稍候。');
+      showInfo('驗證中…');
 
       await axios.get('/api/me/email/verify', { params: { token } });
 
-      setSubtitle('撽???嚗迤?刻歲??????);
-      showSuccess('撽???嚗mail 撌脫??);
+      setSubtitle('Email 驗證完成，即將導回個人資料頁。');
+      showSuccess('Email 驗證成功。');
 
       setTimeout(() => {
         window.location.href = '/profile?verified=1';
-      }, 800);
-
-    } catch (e) {
-      console.error(e);
-      setSubtitle('撽?憭望?');
-      showError(getApiErrorMessage(e, '撽?憭望????撌脣仃??));
+      }, 1000);
+    } catch (error) {
+      console.error(error);
+      setSubtitle('Email 驗證失敗。');
+      showError(getApiErrorMessage(error, 'Email 驗證失敗，請稍後再試。'));
     }
   }
 

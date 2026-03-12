@@ -1,458 +1,138 @@
-<!-- 四、B：更新 admin_users.ejs（整份可覆蓋版：在「詳情 modal」內可編輯並儲存）
-
-你目前 admin_users.ejs 很長，我不想用「只給片段」讓你自己找位置出錯，所以我給你整份可覆蓋版（基於你上一版：含規則同步、apiRequest、modal 訊息顯示、0.8 秒後關閉 create/pwd 成功）。
-
-✅ 主要新增：
-
-detailModal 內新增 detailMsgBox（顯示更新成功/錯誤）
-
-detailModal 內把 name/cellphone/email 改成 input（可編輯）
-
-新增 saveDetailProfile() → PATCH /api/admin/users/:id/profile
-
-成功訊息只顯示在 detailModal（不打到主頁 msgBox）
-
-你原本的 audit 表、載入更多、停用/角色/重設都保留
-
-⚠️ 由於篇幅很長，我會把「新增/修改的 detailModal + JS」做成完整可覆蓋版，但其餘結構與你上版一致。你直接整檔覆蓋即可。 -->
-
-<%
+﻿<%
   style = `
   <style>
-    .small-muted { font-size: 12px; color: #666; }
-    pre.audit-pre { margin:0; white-space:pre-wrap; }
+    .admin-tools-grid { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:1rem; }
+    .admin-toolbar { display:grid; gap:1rem; grid-template-columns:minmax(280px,1.6fr) minmax(160px,.8fr) minmax(180px,.9fr) auto; align-items:end; }
+    .admin-toolbar .toolbar-actions { display:flex; flex-wrap:wrap; gap:.55rem; justify-content:flex-end; align-items:flex-end; }
+    .admin-users-table { table-layout: fixed; }
+    .admin-users-table th:nth-child(1), .admin-users-table td:nth-child(1) { width:72px; }
+    .admin-users-table th:nth-child(2), .admin-users-table td:nth-child(2) { width:140px; }
+    .admin-users-table th:nth-child(3), .admin-users-table td:nth-child(3) { width:120px; }
+    .admin-users-table th:nth-child(4), .admin-users-table td:nth-child(4) { width:132px; }
+    .admin-users-table th:nth-child(6), .admin-users-table td:nth-child(6) { width:180px; }
+    .admin-users-table th:nth-child(7), .admin-users-table td:nth-child(7) { width:100px; }
+    .admin-users-table th:nth-child(8), .admin-users-table td:nth-child(8) { width:248px; }
+    .admin-users-table td { padding:.7rem .65rem; }
+    .admin-users-table td:last-child { min-width:248px; }
+    .admin-actions { display:flex; flex-wrap:wrap; gap:.35rem; }
+    .admin-actions .btn { min-width:74px; padding:.28rem .55rem; font-size:.8rem; line-height:1.2; }
+    .role-pill { display:inline-flex; align-items:center; padding:.18rem .5rem; margin:0 .25rem .25rem 0; border-radius:999px; background:rgba(13,92,99,.1); color:var(--brand-deep); font-size:.76rem; font-weight:600; }
+    .modal-content { border:1px solid var(--line); border-radius:22px; box-shadow:0 20px 50px rgba(23,33,43,.16); overflow:hidden; }
+    .modal-header { border-bottom:1px solid var(--line); background:linear-gradient(135deg,rgba(6,52,58,.96),rgba(13,92,99,.86)); color:#fff; }
+    .modal-footer { border-top:1px solid var(--line); background:rgba(243,239,230,.55); }
+    .detail-grid { display:grid; gap:1rem; grid-template-columns:repeat(auto-fit,minmax(220px,1fr)); }
+    .audit-pre { margin:0; white-space:pre-wrap; font-size:.82rem; color:var(--ink); }
+    @media (max-width:991px) { .admin-tools-grid { grid-template-columns:repeat(2,minmax(0,1fr)); } .admin-toolbar { grid-template-columns:repeat(2,minmax(220px,1fr)); } }
+    @media (max-width:767px) { .admin-tools-grid { grid-template-columns:1fr; } .admin-toolbar { grid-template-columns:1fr; } .admin-toolbar .toolbar-actions { justify-content:flex-start; } .admin-actions { min-width:180px; } }
   </style>
   `;
 %>
 
-<div class="container my-4">
-  <div class="d-flex justify-content-between align-items-center mb-2">
-  <h2 class="text-danger m-0">人員管理</h2>
-
-  <div>
-    <a class="btn btn-outline-secondary mr-2" href="/profile">我的資料</a>
-    <button class="btn btn-success" onclick="openCreateModal()">新增人員</button>
-  </div>
-</div>
-
-  <div class="border p-2 mb-3">
-    <div class="form-row align-items-end">
-      <div class="col-md-3 mb-2">
-        <label class="m-0">關鍵字（帳號 / 姓名 / Email / 手機）</label>
-        <input id="kw" class="form-control" placeholder="輸入關鍵字">
+<div class="container-fluid">
+  <div class="hero-panel mb-4">
+    <div class="row align-items-end">
+      <div class="col-lg-8">
+        <div class="section-kicker mb-2">Administration</div>
+        <h1 class="mb-3">人員管理與權限維護</h1>
+        <p class="mb-0">集中管理帳號、角色、停用狀態與操作紀錄，維持內部權限與審計一致性。</p>
       </div>
-
-      <div class="col-md-2 mb-2">
-        <label class="m-0">狀態</label>
-        <select id="statusFilter" class="form-control">
-          <option value="">全部</option>
-          <option value="0">啟用</option>
-          <option value="1">停用</option>
-        </select>
-      </div>
-
-      <div class="col-md-3 mb-2">
-        <label class="m-0">角色（包含）</label>
-        <select id="roleFilter" class="form-control">
-          <option value="">全部角色</option>
-        </select>
-        <div class="small-muted">提示：選一個角色就只顯示包含該角色的使用者</div>
-      </div>
-
-      <div class="col-md-4 mb-2 text-right">
-        <button class="btn btn-outline-secondary mr-2" onclick="resetFilters()">清除篩選</button>
-        <button class="btn btn-primary" onclick="applyFilters()">套用</button>
+      <div class="col-lg-4 mt-3 mt-lg-0 text-lg-right">
+        <a class="btn btn-light mr-2" href="/dashboard">返回儀表板</a>
+        <button class="btn btn-outline-light" type="button" onclick="openCreateModal()">新增人員</button>
       </div>
     </div>
-
-    <div id="msgBox" class="alert mt-2" style="display:none;"></div>
   </div>
 
-  <table id="usersTable" class="table table-striped table-bordered">
-    <thead>
-      <tr>
-        <th>ID</th>
-        <th>帳號</th>
-        <th>姓名</th>
-        <th>手機</th>
-        <th>Email</th>
-        <th>角色</th>
-        <th>狀態</th>
-        <th style="width: 270px;">操作</th>
-      </tr>
-    </thead>
-    <tbody class="users-content"></tbody>
-  </table>
-</div>
+  <div id="msgBox" class="alert d-none"></div>
 
-<!-- 停用原因 Modal -->
-<div class="modal fade" id="disableModal" tabindex="-1">
-  <div class="modal-dialog">
-    <div class="modal-content">
-      <div class="modal-header">
-        <h5 class="modal-title">停用帳號</h5>
-        <button type="button" class="close" data-dismiss="modal">&times;</button>
-      </div>
-      <div class="modal-body">
-        <div class="small-muted mb-2">建議填寫原因（可留空）</div>
-        <textarea id="disableReason" class="form-control" rows="3" placeholder="例：離職 / 權限調整 / 風控..."></textarea>
-      </div>
-      <div class="modal-footer">
-        <button class="btn btn-danger" onclick="confirmDisable()">確認停用</button>
-        <button class="btn btn-secondary" data-dismiss="modal">取消</button>
-      </div>
+  <div class="admin-tools-grid mb-4">
+    <div class="metric-card"><div class="metric-label mb-2">帳號總數</div><div class="metric-value" id="summaryTotal">0</div><div class="metric-note">含啟用與停用帳號</div></div>
+    <div class="metric-card"><div class="metric-label mb-2">目前啟用</div><div class="metric-value" id="summaryActive">0</div><div class="metric-note">可正常登入的內部帳號</div></div>
+    <div class="metric-card"><div class="metric-label mb-2">已停用</div><div class="metric-value" id="summaryDisabled">0</div><div class="metric-note">已封鎖登入與 refresh token</div></div>
+    <div class="metric-card"><div class="metric-label mb-2">管理角色</div><div class="metric-value" id="summaryAdmin">0</div><div class="metric-note">含 admin 或 Administrator 角色</div></div>
+  </div>
+
+  <div class="data-card mb-4">
+    <div class="d-flex flex-wrap justify-content-between align-items-center mb-3">
+      <div><div class="section-kicker">Filters</div><div class="section-title">篩選與搜尋</div></div>
+      <div class="form-note">可依帳號、姓名、Email、角色與停用狀態快速篩選。</div>
+    </div>
+    <div class="admin-toolbar">
+      <div class="form-group mb-0"><label for="kw">關鍵字</label><input id="kw" class="form-control" placeholder="搜尋帳號、姓名、Email 或手機"></div>
+      <div class="form-group mb-0"><label for="statusFilter">狀態</label><select id="statusFilter" class="form-control"><option value="">全部狀態</option><option value="0">啟用中</option><option value="1">已停用</option></select></div>
+      <div class="form-group mb-0"><label for="roleFilter">角色</label><select id="roleFilter" class="form-control"><option value="">全部角色</option></select></div>
+      <div class="toolbar-actions"><button class="btn btn-outline-secondary" type="button" onclick="resetFilters()">清除條件</button><button class="btn btn-danger" type="button" onclick="applyFilters()">套用篩選</button></div>
+    </div>
+  </div>
+
+  <div class="data-card">
+    <div class="d-flex flex-wrap justify-content-between align-items-center mb-3">
+      <div><div class="section-kicker">Users</div><div class="section-title">帳號列表</div></div>
+      <div class="form-note" id="tableMeta">正在讀取帳號資料…</div>
+    </div>
+    <div class="table-responsive">
+      <table id="usersTable" class="table table-hover admin-users-table">
+        <thead><tr><th>ID</th><th>帳號</th><th>姓名</th><th>手機</th><th>Email</th><th>角色</th><th>狀態</th><th>操作</th></tr></thead>
+        <tbody></tbody>
+      </table>
     </div>
   </div>
 </div>
 
-<!-- 角色設定 Modal -->
-<div class="modal fade" id="roleModal" tabindex="-1">
-  <div class="modal-dialog">
-    <div class="modal-content">
-      <div class="modal-header">
-        <h5 class="modal-title">指派角色</h5>
-        <button type="button" class="close" data-dismiss="modal">&times;</button>
-      </div>
-      <div class="modal-body">
-        <div class="mb-2">
-          <button class="btn btn-sm btn-outline-secondary mr-2" onclick="checkAllRoles(true)">全選</button>
-          <button class="btn btn-sm btn-outline-secondary" onclick="checkAllRoles(false)">全不選</button>
-        </div>
-        <div id="roleList"></div>
-      </div>
-      <div class="modal-footer">
-        <button class="btn btn-primary" onclick="saveRoles()">儲存</button>
-        <button class="btn btn-secondary" data-dismiss="modal">取消</button>
-      </div>
-    </div>
-  </div>
-</div>
+<div class="modal fade" id="createModal" tabindex="-1" aria-hidden="true"><div class="modal-dialog modal-lg modal-dialog-centered"><div class="modal-content"><div class="modal-header"><h5 class="modal-title">新增人員帳號</h5><button type="button" class="close text-white" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button></div><div class="modal-body"><div id="createMsgBox" class="alert d-none"></div><div class="detail-grid"><div class="form-group mb-0"><label for="cAccount">帳號</label><input id="cAccount" class="form-control"><div id="accountHint" class="form-note mt-2"></div></div><div class="form-group mb-0"><label for="cPassword">初始密碼</label><input id="cPassword" type="password" class="form-control"><div id="pwdPolicyText2" class="form-note mt-2"></div></div><div class="form-group mb-0"><label for="cName">姓名</label><input id="cName" class="form-control"></div><div class="form-group mb-0"><label for="cCell">手機</label><input id="cCell" class="form-control" placeholder="例如 09xxxxxxxx"></div><div class="form-group mb-0" style="grid-column:1 / -1;"><label for="cEmail">Email</label><input id="cEmail" class="form-control"><div id="emailHint" class="form-note mt-2"></div></div></div><hr><div class="d-flex flex-wrap justify-content-between align-items-center mb-3"><div><div class="section-kicker">Roles</div><div class="section-title">指派角色</div></div><div><button class="btn btn-sm btn-outline-secondary mr-2" type="button" onclick="checkAllCreateRoles(true)">全選</button><button class="btn btn-sm btn-outline-secondary" type="button" onclick="checkAllCreateRoles(false)">全部取消</button></div></div><div id="createRoleList"></div></div><div class="modal-footer"><button id="btnCreateUser" class="btn btn-danger" type="button" onclick="createUser()">建立帳號</button><button class="btn btn-outline-secondary" type="button" data-dismiss="modal">取消</button></div></div></div></div>
 
-<!-- 重設密碼 Modal -->
-<div class="modal fade" id="pwdModal" tabindex="-1">
-  <div class="modal-dialog">
-    <div class="modal-content">
-      <div class="modal-header">
-        <h5 class="modal-title">重設密碼</h5>
-        <button type="button" class="close" data-dismiss="modal">&times;</button>
-      </div>
+<div class="modal fade" id="roleModal" tabindex="-1" aria-hidden="true"><div class="modal-dialog modal-dialog-centered"><div class="modal-content"><div class="modal-header"><h5 class="modal-title">調整角色權限</h5><button type="button" class="close text-white" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button></div><div class="modal-body"><div class="d-flex flex-wrap justify-content-between align-items-center mb-3"><div class="form-note">調整完成後會立即更新使用者權限快取。</div><div><button class="btn btn-sm btn-outline-secondary mr-2" type="button" onclick="checkAllRoles(true)">全選</button><button class="btn btn-sm btn-outline-secondary" type="button" onclick="checkAllRoles(false)">全部取消</button></div></div><div id="roleList"></div></div><div class="modal-footer"><button class="btn btn-danger" type="button" onclick="saveRoles()">儲存角色</button><button class="btn btn-outline-secondary" type="button" data-dismiss="modal">取消</button></div></div></div></div>
 
-      <div class="modal-body">
-        <div id="pwdMsgBox" class="alert" style="display:none;"></div>
+<div class="modal fade" id="pwdModal" tabindex="-1" aria-hidden="true"><div class="modal-dialog modal-dialog-centered"><div class="modal-content"><div class="modal-header"><h5 class="modal-title">重設人員密碼</h5><button type="button" class="close text-white" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button></div><div class="modal-body"><div id="pwdMsgBox" class="alert d-none"></div><div class="form-group mb-0"><label for="newPwd">新密碼</label><input id="newPwd" type="password" class="form-control" placeholder="請輸入新的密碼"><div id="pwdPolicyText1" class="form-note mt-2"></div><div class="form-note mt-2">重設後會撤銷此使用者現有的 refresh token，並寫入 audit log。</div></div></div><div class="modal-footer"><button id="btnResetPwd" class="btn btn-danger" type="button" onclick="resetPassword()">確認重設</button><button class="btn btn-outline-secondary" type="button" data-dismiss="modal">取消</button></div></div></div></div>
 
-        <div class="form-group">
-          <label>新密碼</label>
-          <input id="newPwd" type="password" class="form-control" placeholder="********">
-          <div id="pwdPolicyText1" class="small-muted mt-1">密碼規則載入中...</div>
-          <div class="small-muted mt-1">重設後會寫入審計欄位與 audit log</div>
-        </div>
-      </div>
+<div class="modal fade" id="disableModal" tabindex="-1" aria-hidden="true"><div class="modal-dialog modal-dialog-centered"><div class="modal-content"><div class="modal-header"><h5 class="modal-title">停用帳號</h5><button type="button" class="close text-white" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button></div><div class="modal-body"><div class="form-note mb-3">停用後該帳號將無法再登入系統，現有 refresh token 也會一併撤銷。</div><div class="form-group mb-0"><label for="disableReason">停用原因</label><textarea id="disableReason" class="form-control" rows="4" placeholder="例如：離職、帳號停用、權限收回"></textarea></div></div><div class="modal-footer"><button class="btn btn-danger" type="button" onclick="confirmDisable()">確認停用</button><button class="btn btn-outline-secondary" type="button" data-dismiss="modal">取消</button></div></div></div></div>
 
-      <div class="modal-footer">
-        <button id="btnResetPwd" class="btn btn-danger" onclick="resetPassword()">確認重設</button>
-        <button class="btn btn-secondary" data-dismiss="modal">取消</button>
-      </div>
-    </div>
-  </div>
-</div>
-
-<!-- 新增人員 Modal -->
-<div class="modal fade" id="createModal" tabindex="-1">
-  <div class="modal-dialog">
-    <div class="modal-content">
-      <div class="modal-header">
-        <h5 class="modal-title">新增人員</h5>
-        <button type="button" class="close" data-dismiss="modal">&times;</button>
-      </div>
-
-      <div class="modal-body">
-        <div id="createMsgBox" class="alert" style="display:none;"></div>
-
-        <div class="form-group">
-          <label>帳號</label>
-          <input id="cAccount" class="form-control">
-          <div id="accountHint" class="small-muted mt-1">帳號規則載入中...</div>
-        </div>
-
-        <div class="form-group">
-          <label>密碼</label>
-          <input id="cPassword" type="password" class="form-control">
-          <div id="pwdPolicyText2" class="small-muted mt-1">密碼規則載入中...</div>
-        </div>
-
-        <div class="form-group">
-          <label>姓名</label>
-          <input id="cName" class="form-control">
-        </div>
-
-        <div class="form-group">
-          <label>手機（必填）</label>
-          <input id="cCell" class="form-control" placeholder="例：09xxxxxxxx">
-        </div>
-
-        <div class="form-group">
-          <label>Email（必填）</label>
-          <input id="cEmail" class="form-control">
-          <div id="emailHint" class="small-muted mt-1">Email 規則載入中...</div>
-        </div>
-
-        <hr/>
-        <div class="d-flex justify-content-between align-items-center">
-          <b>指派角色</b>
-          <div>
-            <button class="btn btn-sm btn-outline-secondary mr-1" onclick="checkAllCreateRoles(true)">全選</button>
-            <button class="btn btn-sm btn-outline-secondary" onclick="checkAllCreateRoles(false)">全不選</button>
-          </div>
-        </div>
-        <div id="createRoleList" class="mt-2"></div>
-      </div>
-
-      <div class="modal-footer">
-        <button id="btnCreateUser" class="btn btn-success" onclick="createUser()">建立</button>
-        <button class="btn btn-secondary" data-dismiss="modal">取消</button>
-      </div>
-    </div>
-  </div>
-</div>
-
-<!-- Detail + Audit Modal（✅ 這裡改成可編輯） -->
-<div class="modal fade" id="detailModal" tabindex="-1">
-  <div class="modal-dialog modal-lg">
-    <div class="modal-content">
-      <div class="modal-header">
-        <h5 class="modal-title">使用者詳情 / 操作紀錄</h5>
-        <button type="button" class="close" data-dismiss="modal">&times;</button>
-      </div>
-
-      <div class="modal-body">
-        <!-- ✅ detail 的訊息顯示（成功/失敗都在這裡） -->
-        <div id="detailMsgBox" class="alert" style="display:none;"></div>
-
-        <div class="border p-2 mb-3">
-          <div class="form-row">
-            <div class="form-group col-md-4">
-              <label>ID</label>
-              <input id="dId" class="form-control" disabled>
-            </div>
-            <div class="form-group col-md-4">
-              <label>帳號（不可修改）</label>
-              <input id="dAccount" class="form-control" disabled>
-            </div>
-            <div class="form-group col-md-4">
-              <label>建立/更新</label>
-              <input id="dDates" class="form-control" disabled>
-            </div>
-          </div>
-
-          <div class="form-row">
-            <div class="form-group col-md-4">
-              <label>姓名</label>
-              <input id="dName" class="form-control" maxlength="50">
-            </div>
-
-            <div class="form-group col-md-4">
-              <label>手機（必填）</label>
-              <input id="dCell" class="form-control" maxlength="15" placeholder="例：09xxxxxxxx">
-            </div>
-
-            <div class="form-group col-md-4">
-              <label>Email（必填）</label>
-              <input id="dEmail" class="form-control">
-              <div class="small-muted mt-1">（規則由 /api/security/config 同步）</div>
-            </div>
-          </div>
-
-          <div class="d-flex justify-content-between align-items-center">
-            <div class="small-muted" id="dMetaText"></div>
-            <button id="btnSaveDetail" class="btn btn-sm btn-primary" onclick="saveDetailProfile()">儲存基本資料</button>
-          </div>
-
-          <div class="small-muted mt-2" id="dAuditText"></div>
-        </div>
-
-        <div class="d-flex justify-content-between align-items-center">
-          <h5 class="m-0">最近操作紀錄</h5>
-          <div class="small-muted">顯示最新在上方</div>
-        </div>
-
-        <table class="table table-sm table-bordered mt-2">
-          <thead>
-            <tr>
-              <th style="width: 150px;">時間</th>
-              <th style="width: 120px;">操作者</th>
-              <th style="width: 160px;">動作</th>
-              <th>細節</th>
-              <th style="width: 120px;">IP</th>
-            </tr>
-          </thead>
-          <tbody id="auditRows"></tbody>
-        </table>
-
-        <div class="text-center">
-          <button id="btnMoreAudit" class="btn btn-outline-secondary btn-sm" onclick="loadMoreAudit()">載入更多</button>
-        </div>
-      </div>
-
-      <div class="modal-footer">
-        <button class="btn btn-secondary" data-dismiss="modal">關閉</button>
-      </div>
-    </div>
-  </div>
-</div>
+<div class="modal fade" id="detailModal" tabindex="-1" aria-hidden="true"><div class="modal-dialog modal-xl modal-dialog-centered"><div class="modal-content"><div class="modal-header"><h5 class="modal-title">人員詳情與操作紀錄</h5><button type="button" class="close text-white" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button></div><div class="modal-body"><div id="detailMsgBox" class="alert d-none"></div><div class="data-card mb-4"><div class="d-flex flex-wrap justify-content-between align-items-center mb-3"><div><div class="section-kicker">Profile</div><div class="section-title">基本資料</div></div><button id="btnSaveDetail" class="btn btn-danger btn-sm" type="button" onclick="saveDetailProfile()">儲存資料</button></div><div class="detail-grid"><div class="form-group mb-0"><label for="dId">ID</label><input id="dId" class="form-control" disabled></div><div class="form-group mb-0"><label for="dAccount">帳號</label><input id="dAccount" class="form-control" disabled></div><div class="form-group mb-0"><label for="dDates">建立 / 更新時間</label><input id="dDates" class="form-control" disabled></div><div class="form-group mb-0"><label for="dName">姓名</label><input id="dName" class="form-control" maxlength="50"></div><div class="form-group mb-0"><label for="dCell">手機</label><input id="dCell" class="form-control" maxlength="15" placeholder="例如 09xxxxxxxx"></div><div class="form-group mb-0"><label for="dEmail">Email</label><input id="dEmail" class="form-control"></div></div><div class="d-flex flex-wrap justify-content-between align-items-center mt-3"><div class="form-note" id="dMetaText"></div><div class="form-note" id="dAuditText"></div></div></div><div class="data-card"><div class="d-flex flex-wrap justify-content-between align-items-center mb-3"><div><div class="section-kicker">Audit Trail</div><div class="section-title">操作紀錄</div></div><div class="form-note">顯示最近 audit log，可逐批載入更多紀錄。</div></div><div class="table-responsive"><table class="table table-hover table-sm"><thead><tr><th style="width:170px;">時間</th><th style="width:140px;">操作者</th><th style="width:180px;">動作</th><th>內容</th><th style="width:140px;">IP</th></tr></thead><tbody id="auditRows"></tbody></table></div><div class="text-center mt-3"><button id="btnMoreAudit" class="btn btn-outline-secondary btn-sm" type="button" onclick="loadMoreAudit()">載入更多紀錄</button></div></div></div><div class="modal-footer"><button class="btn btn-outline-secondary" type="button" data-dismiss="modal">關閉</button></div></div></div></div>
 
 <script>
   let users = [];
   let roles = [];
   let selectedUserId = null;
-
   let disableTargetId = null;
-
+  let detailTargetId = null;
   let auditTargetId = null;
   let auditOffset = 0;
   const auditLimit = 50;
-
-  // ✅ detail 目前正在編輯的 target
-  let detailTargetId = null;
-
   let dt = null;
 
-  // ===== 規則同步 =====
-  let securityCfg = {
-    ACCOUNT_MIN: 3,
-    ACCOUNT_MAX: 32,
-    EMAIL_MAX: 200,
-    PWD_MIN: 10,
-    PWD_MAX: 72,
-    passwordPolicyText: '密碼需符合系統規則（需包含大小寫字母、數字與符號，且不可包含帳號）'
-  };
+  let securityCfg = { ACCOUNT_MIN: 3, ACCOUNT_MAX: 32, EMAIL_MAX: 200, PWD_MIN: 10, PWD_MAX: 72, passwordPolicyText: '密碼需符合系統設定的長度與複雜度要求。' };
 
-  function showMsg(msg, type = 'danger') {
-    const box = document.getElementById('msgBox');
-    box.style.display = 'block';
-    box.classList.remove('alert-danger','alert-success','alert-warning','alert-info');
-    box.classList.add('alert-' + type);
-    box.innerText = msg || '';
-    box.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-  }
-  function showError(msg) { showMsg(msg, 'danger'); }
-  function showSuccess(msg) { showMsg(msg, 'success'); }
-  function clearMsg() {
-    const box = document.getElementById('msgBox');
-    box.style.display = 'none';
-    box.innerText = '';
-  }
-
-  function showModalMsg(boxId, msg, type = 'danger') {
-    const box = document.getElementById(boxId);
-    if (!box) return;
-    box.style.display = 'block';
-    box.classList.remove('alert-danger','alert-success','alert-warning','alert-info');
-    box.classList.add('alert-' + type);
-    box.innerText = msg || '';
-  }
-  function clearModalMsg(boxId) {
-    const box = document.getElementById(boxId);
-    if (!box) return;
-    box.style.display = 'none';
-    box.innerText = '';
-  }
-
-  function showCreateError(msg) { showModalMsg('createMsgBox', msg, 'danger'); }
-  function showCreateSuccess(msg) { showModalMsg('createMsgBox', msg, 'success'); }
-  function showPwdError(msg) { showModalMsg('pwdMsgBox', msg, 'danger'); }
-  function showPwdSuccess(msg) { showModalMsg('pwdMsgBox', msg, 'success'); }
-
-  function showDetailError(msg) { showModalMsg('detailMsgBox', msg, 'danger'); }
-  function showDetailSuccess(msg) { showModalMsg('detailMsgBox', msg, 'success'); }
-
-  function getApiErrorMessage(err, fallback = '操作失敗') {
-    const data = err?.response?.data;
-    return data?.message || err?.message || fallback;
-  }
-
-  async function apiRequest(method, url, data, opts = {}) {
-    try {
-      const res = await axios({ method, url, data });
-      return res.data;
-    } catch (err) {
-      const msg = getApiErrorMessage(err);
-      console.error('[API ERROR]', { method, url, msg, data, err, response: err?.response?.data });
-
-      if (!opts?.silent) {
-        if (typeof opts?.onError === 'function') opts.onError(msg, err);
-        else showError(msg);
-      }
-      throw err;
-    }
-  }
-
-  function closeModalAfter(modalSelector, ms = 800) {
-    return new Promise(resolve => {
-      setTimeout(() => {
-        $(modalSelector).modal('hide');
-        resolve();
-      }, ms);
-    });
-  }
-
-  function escapeHtml(str) {
-    return String(str ?? '').replace(/[&<>"']/g, (m) => ({
-      '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'
-    }[m]));
-  }
-
-  function formatDetail(detailJson) {
-    if (!detailJson) return '';
-    try {
-      if (typeof detailJson === 'string') return detailJson;
-      return JSON.stringify(detailJson, null, 2);
-    } catch {
-      return String(detailJson);
-    }
-  }
-
+  function escapeHtml(value) { return String(value ?? '').replace(/[&<>"']/g, (char) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;' }[char])); }
+  function showMsg(message, type = 'danger') { const box = document.getElementById('msgBox'); box.className = `alert alert-${type}`; box.textContent = message || ''; }
+  function clearMsg() { const box = document.getElementById('msgBox'); box.className = 'alert d-none'; box.textContent = ''; }
+  function setModalMessage(boxId, message, type = 'danger') { const box = document.getElementById(boxId); if (!box) return; if (!message) { box.className = 'alert d-none'; box.textContent = ''; return; } box.className = `alert alert-${type}`; box.textContent = message; }
+  function getApiErrorMessage(error, fallback = '操作失敗，請稍後再試。') { return error?.response?.data?.message || error?.message || fallback; }
+  async function apiRequest(method, url, data, options = {}) { try { const response = await axios({ method, url, data }); return response.data; } catch (error) { const message = getApiErrorMessage(error); if (!options.silent) { if (typeof options.onError === 'function') options.onError(message, error); else showMsg(message); } throw error; } }
+  function formatDateText(value) { if (!value) return '—'; return String(value).replace('T', ' ').replace(/\.\d+Z?$/, ''); }
   function applySecurityConfigToUI() {
-    const t = securityCfg.passwordPolicyText || '';
-    const el1 = document.getElementById('pwdPolicyText1');
-    const el2 = document.getElementById('pwdPolicyText2');
-    if (el1) el1.innerText = t;
-    if (el2) el2.innerText = t;
-
-    const acc = document.getElementById('cAccount');
-    if (acc) {
-      acc.setAttribute('maxlength', String(securityCfg.ACCOUNT_MAX));
-      acc.setAttribute('placeholder', `例：staff01 / admin.test（${securityCfg.ACCOUNT_MIN}～${securityCfg.ACCOUNT_MAX}碼，首字母英文字母）`);
-    }
-    const accHint = document.getElementById('accountHint');
-    if (accHint) accHint.innerText = `帳號：${securityCfg.ACCOUNT_MIN}～${securityCfg.ACCOUNT_MAX}碼，首字母英文字母，可含 . _ -`;
-
-    const em = document.getElementById('cEmail');
-    if (em) {
-      em.setAttribute('maxlength', String(securityCfg.EMAIL_MAX));
-      em.setAttribute('placeholder', `例：name@example.com（最長 ${securityCfg.EMAIL_MAX} 字）`);
-    }
+    const accountHint = document.getElementById('accountHint');
     const emailHint = document.getElementById('emailHint');
-    if (emailHint) emailHint.innerText = `Email：最長 ${securityCfg.EMAIL_MAX} 字，需為合法 Email 格式`;
-
-    const pwd = document.getElementById('cPassword');
-    if (pwd) {
-      pwd.setAttribute('maxlength', String(securityCfg.PWD_MAX));
-      pwd.setAttribute('placeholder', `請輸入符合規則的密碼（${securityCfg.PWD_MIN}～${securityCfg.PWD_MAX}碼）`);
-    }
-    const newPwd = document.getElementById('newPwd');
-    if (newPwd) {
-      newPwd.setAttribute('maxlength', String(securityCfg.PWD_MAX));
-      newPwd.setAttribute('placeholder', `請輸入新密碼（${securityCfg.PWD_MIN}～${securityCfg.PWD_MAX}碼）`);
-    }
-
-    // ✅ detailModal 的 email maxlength 同步
+    const pwdPolicyText1 = document.getElementById('pwdPolicyText1');
+    const pwdPolicyText2 = document.getElementById('pwdPolicyText2');
+    if (accountHint) accountHint.textContent = `帳號長度 ${securityCfg.ACCOUNT_MIN} 到 ${securityCfg.ACCOUNT_MAX} 字元，可使用英文、數字、點、底線與連字號。`;
+    if (emailHint) emailHint.textContent = `Email 最多 ${securityCfg.EMAIL_MAX} 字元，且不得與既有帳號重複。`;
+    if (pwdPolicyText1) pwdPolicyText1.textContent = securityCfg.passwordPolicyText;
+    if (pwdPolicyText2) pwdPolicyText2.textContent = securityCfg.passwordPolicyText;
+    const cAccount = document.getElementById('cAccount');
+    const cEmail = document.getElementById('cEmail');
     const dEmail = document.getElementById('dEmail');
-    if (dEmail) dEmail.setAttribute('maxlength', String(securityCfg.EMAIL_MAX));
+    const cPassword = document.getElementById('cPassword');
+    const newPwd = document.getElementById('newPwd');
+    if (cAccount) cAccount.maxLength = securityCfg.ACCOUNT_MAX;
+    if (cEmail) cEmail.maxLength = securityCfg.EMAIL_MAX;
+    if (dEmail) dEmail.maxLength = securityCfg.EMAIL_MAX;
+    if (cPassword) cPassword.maxLength = securityCfg.PWD_MAX;
+    if (newPwd) newPwd.maxLength = securityCfg.PWD_MAX;
   }
 
   async function loadSecurityConfig() {
     try {
-      const data = await apiRequest('get', '/api/security/config');
+      const data = await apiRequest('get', '/api/security/config', null, { silent: true });
       securityCfg = {
         ACCOUNT_MIN: Number(data.ACCOUNT_MIN) || securityCfg.ACCOUNT_MIN,
         ACCOUNT_MAX: Number(data.ACCOUNT_MAX) || securityCfg.ACCOUNT_MAX,
@@ -461,62 +141,62 @@ detailModal 內把 name/cellphone/email 改成 input（可編輯）
         PWD_MAX: Number(data.PWD_MAX) || securityCfg.PWD_MAX,
         passwordPolicyText: String(data.passwordPolicyText || securityCfg.passwordPolicyText),
       };
-    } catch (e) {
-      console.warn('[security/config] fallback to defaults');
+    } catch (_) {
     } finally {
       applySecurityConfigToUI();
     }
   }
 
-  async function loadData() {
-    const [uRes, rRes] = await Promise.all([
-      apiRequest('get', '/api/admin/users'),
-      apiRequest('get', '/api/admin/roles')
-    ]);
-    users = uRes.users || [];
-    roles = rRes.roles || [];
-
-    const roleFilter = document.getElementById('roleFilter');
-    roleFilter.innerHTML = `<option value="">全部角色</option>` + roles.map(r => (
-      `<option value="${r.id}">${escapeHtml(r.name)} (${escapeHtml(r.code)})</option>`
-    )).join('');
-
-    renderTable(users);
+  function updateSummary(list) {
+    const total = list.length;
+    const disabled = list.filter((user) => Boolean(user.is_disabled)).length;
+    const active = total - disabled;
+    const admin = list.filter((user) => (user.roles || []).some((role) => role.code === 'admin' || role.name === 'Administrator')).length;
+    document.getElementById('summaryTotal').textContent = total;
+    document.getElementById('summaryActive').textContent = active;
+    document.getElementById('summaryDisabled').textContent = disabled;
+    document.getElementById('summaryAdmin').textContent = admin;
+    document.getElementById('tableMeta').textContent = `共 ${total} 位人員，目前顯示最新資料。`;
   }
 
-  function buildRow(u) {
-    const roleText = (u.roles || []).map(r => r.name).join(', ') || '—';
-    const status = u.is_disabled ? `<span class="text-danger">停用</span>` : `<span class="text-success">啟用</span>`;
+  function roleBadges(userRoles) {
+    if (!userRoles || !userRoles.length) return '<span class="form-note">???</span>';
+    return userRoles.map((role) => `<span class="role-pill">(${escapeHtml(role.code)})</span>`).join(' ');
+  }
 
-    const btnDisable = u.is_disabled
-      ? `<button class="btn btn-sm btn-success mr-1" onclick="toggleDisable(${u.id}, false)">啟用</button>`
-      : `<button class="btn btn-sm btn-danger mr-1" onclick="openDisableModal(${u.id})">停用</button>`;
+  function statusBadge(user) { return user.is_disabled ? '<span class="status-pill is-alert">已停用</span>' : '<span class="status-pill is-success">啟用中</span>'; }
 
-    return [
-      u.id,
-      escapeHtml(u.account),
-      escapeHtml(u.name || ''),
-      escapeHtml(u.cellphone || ''),
-      escapeHtml(u.email || ''),
-      escapeHtml(roleText),
-      status,
-      `
-        <div style="white-space:nowrap;">
-          <button class="btn btn-sm btn-primary mr-1" onclick="openRoleModal(${u.id})">角色</button>
-          <button class="btn btn-sm btn-warning mr-1" onclick="openPwdModal(${u.id})">重設</button>
-          ${btnDisable}
-          <button class="btn btn-sm btn-info" onclick="openDetailModal(${u.id})">詳情</button>
-        </div>
-      `
-    ];
+  function buildActionButtons(user) {
+    const disableButton = user.is_disabled
+      ? `<button class="btn btn-sm btn-outline-success" type="button" onclick="toggleDisable(${user.id}, false)">重新啟用</button>`
+      : `<button class="btn btn-sm btn-outline-danger" type="button" onclick="openDisableModal(${user.id})">停用帳號</button>`;
+    return `
+      <div class="admin-actions">
+        <button class="btn btn-sm btn-outline-secondary" type="button" onclick="openRoleModal(${user.id})">角色</button>
+        <button class="btn btn-sm btn-outline-warning" type="button" onclick="openPwdModal(${user.id})">重設密碼</button>
+        ${disableButton}
+        <button class="btn btn-sm btn-danger" type="button" onclick="openDetailModal(${user.id})">詳情</button>
+      </div>
+    `;
   }
 
   function renderTable(list) {
-    const data = list.map(buildRow);
+    const data = list.map((user) => [
+      user.id,
+      escapeHtml(user.account),
+      escapeHtml(user.name || '—'),
+      escapeHtml(user.cellphone || '—'),
+      escapeHtml(user.email || '—'),
+      roleBadges(user.roles || []),
+      statusBadge(user),
+      buildActionButtons(user),
+    ]);
 
     if (!dt) {
       dt = $('#usersTable').DataTable({
         info: false,
+        pageLength: 10,
+        order: [[0, 'desc']],
         data,
         columns: [
           { title: 'ID' },
@@ -524,10 +204,17 @@ detailModal 內把 name/cellphone/email 改成 input（可編輯）
           { title: '姓名' },
           { title: '手機' },
           { title: 'Email' },
-          { title: '角色' },
-          { title: '狀態' },
-          { title: '操作', orderable:false }
-        ]
+          { title: '角色', orderable: false },
+          { title: '狀態', orderable: false },
+          { title: '操作', orderable: false },
+        ],
+        language: {
+          emptyTable: '目前沒有帳號資料',
+          zeroRecords: '找不到符合條件的人員',
+          paginate: { previous: '上一頁', next: '下一頁' },
+          search: '表格搜尋：',
+          lengthMenu: '每頁顯示 _MENU_ 筆',
+        },
       });
     } else {
       dt.clear();
@@ -536,31 +223,35 @@ detailModal 內把 name/cellphone/email 改成 input（可編輯）
     }
   }
 
+  function populateRoleFilter() {
+    const select = document.getElementById('roleFilter');
+    select.innerHTML = '<option value="">全部角色</option>' + roles.map((role) => `<option value="${role.id}">${escapeHtml(role.name)} (${escapeHtml(role.code)})</option>`).join('');
+  }
+
+  async function loadData() {
+    const [usersRes, rolesRes] = await Promise.all([
+      apiRequest('get', '/api/admin/users'),
+      apiRequest('get', '/api/admin/roles'),
+    ]);
+    users = Array.isArray(usersRes.users) ? usersRes.users : [];
+    roles = Array.isArray(rolesRes.roles) ? rolesRes.roles : [];
+    populateRoleFilter();
+    updateSummary(users);
+    renderTable(users);
+  }
+
   function applyFilters() {
-    const kw = (document.getElementById('kw').value || '').trim().toLowerCase();
-    const st = document.getElementById('statusFilter').value;
-    const rid = document.getElementById('roleFilter').value;
-
+    const keyword = (document.getElementById('kw').value || '').trim().toLowerCase();
+    const statusFilter = document.getElementById('statusFilter').value;
+    const roleFilter = document.getElementById('roleFilter').value;
     let list = users.slice();
-
-    if (st !== '') {
-      const wantDisabled = st === '1';
-      list = list.filter(u => Boolean(u.is_disabled) === wantDisabled);
+    if (statusFilter !== '') list = list.filter((user) => Boolean(user.is_disabled) === (statusFilter === '1'));
+    if (roleFilter) list = list.filter((user) => (user.roles || []).some((role) => Number(role.id) === Number(roleFilter)));
+    if (keyword) {
+      list = list.filter((user) => `${user.account || ''} ${user.name || ''} ${user.email || ''} ${user.cellphone || ''}`.toLowerCase().includes(keyword));
     }
-
-    if (rid !== '') {
-      const roleId = Number(rid);
-      list = list.filter(u => (u.roles || []).some(r => r.id === roleId));
-    }
-
-    if (kw) {
-      list = list.filter(u => {
-        const s = `${u.account||''} ${u.name||''} ${u.email||''} ${u.cellphone||''}`.toLowerCase();
-        return s.includes(kw);
-      });
-    }
-
     renderTable(list);
+    document.getElementById('tableMeta').textContent = `符合條件 ${list.length} 位人員。`;
   }
 
   function resetFilters() {
@@ -568,83 +259,62 @@ detailModal 內把 name/cellphone/email 改成 input（可編輯）
     document.getElementById('statusFilter').value = '';
     document.getElementById('roleFilter').value = '';
     renderTable(users);
+    document.getElementById('tableMeta').textContent = `共 ${users.length} 位人員，目前顯示最新資料。`;
   }
 
-  // ===== role modal =====
+  function renderRoleChecklist(targetId, className, checkedIds) {
+    const target = document.getElementById(targetId);
+    target.innerHTML = roles.map((role) => {
+      const checked = checkedIds.has(Number(role.id)) ? 'checked' : '';
+      return `<div class="form-check mb-2"><input class="form-check-input ${className}" type="checkbox" value="${role.id}" id="${className}-${role.id}" ${checked}><label class="form-check-label" for="${className}-${role.id}">${escapeHtml(role.name)} (${escapeHtml(role.code)})</label></div>`;
+    }).join('');
+  }
+
   async function openRoleModal(userId) {
     selectedUserId = userId;
-    const res = await apiRequest('get', `/api/admin/users/${userId}/roles`);
-    const current = new Set((res.roles || []).map(r => r.id));
-
-    let html = '';
-    for (const r of roles) {
-      const checked = current.has(r.id) ? 'checked' : '';
-      html += `
-        <div class="form-check">
-          <input class="form-check-input role-check" type="checkbox" value="${r.id}" id="role-${r.id}" ${checked}>
-          <label class="form-check-label" for="role-${r.id}">${escapeHtml(r.name)} (${escapeHtml(r.code)})</label>
-        </div>
-      `;
-    }
-    document.getElementById('roleList').innerHTML = html;
+    const response = await apiRequest('get', `/api/admin/users/${userId}/roles`);
+    const checkedIds = new Set((response.roles || []).map((role) => Number(role.id)));
+    renderRoleChecklist('roleList', 'role-check', checkedIds);
     $('#roleModal').modal('show');
   }
 
-  function checkAllRoles(on) {
-    document.querySelectorAll('.role-check').forEach(x => x.checked = !!on);
-  }
+  function checkAllRoles(checked) { document.querySelectorAll('.role-check').forEach((input) => { input.checked = checked; }); }
 
   async function saveRoles() {
-    const checked = Array.from(document.querySelectorAll('.role-check'))
-      .filter(x => x.checked)
-      .map(x => Number(x.value));
-
+    const roleIds = Array.from(document.querySelectorAll('.role-check')).filter((input) => input.checked).map((input) => Number(input.value));
     try {
-      await apiRequest('post', `/api/admin/users/${selectedUserId}/roles`, { roleIds: checked });
-      showSuccess('已更新角色');
-      await loadData();
+      await apiRequest('post', `/api/admin/users/${selectedUserId}/roles`, { roleIds });
       $('#roleModal').modal('hide');
-    } catch (e) {}
+      showMsg('角色設定已更新。', 'success');
+      await loadData();
+    } catch (_) {}
   }
 
-  // ===== pwd modal =====
   function openPwdModal(userId) {
-    clearModalMsg('pwdMsgBox');
     selectedUserId = userId;
     document.getElementById('newPwd').value = '';
-    applySecurityConfigToUI();
+    setModalMessage('pwdMsgBox', '');
     $('#pwdModal').modal('show');
   }
-
   async function resetPassword() {
-    const btn = document.getElementById('btnResetPwd');
-    btn.disabled = true;
-
+    const button = document.getElementById('btnResetPwd');
+    button.disabled = true;
     try {
-      clearModalMsg('pwdMsgBox');
-
-      const pwd = document.getElementById('newPwd').value || '';
-      if (!pwd.trim()) {
-        showPwdError('請輸入新密碼');
+      const newPassword = document.getElementById('newPwd').value || '';
+      if (!newPassword.trim()) {
+        setModalMessage('pwdMsgBox', '請先輸入新密碼。');
         return;
       }
-
-      await apiRequest(
-        'post',
-        `/api/admin/users/${selectedUserId}/resetPassword`,
-        { newPassword: pwd },
-        { onError: (msg) => showPwdError(msg) }
-      );
-
-      showPwdSuccess('已重設密碼');
-      await closeModalAfter('#pwdModal', 800); // ✅ 成功停留 0.8 秒後關閉
-    } catch (e) {
+      await apiRequest('post', `/api/admin/users/${selectedUserId}/resetPassword`, { newPassword }, { onError: (message) => setModalMessage('pwdMsgBox', message) });
+      setModalMessage('pwdMsgBox', '密碼已重設完成。', 'success');
+      showMsg('已重設使用者密碼。', 'success');
+      setTimeout(() => $('#pwdModal').modal('hide'), 700);
+    } catch (_) {
     } finally {
-      btn.disabled = false;
+      button.disabled = false;
     }
   }
 
-  // ===== disable =====
   function openDisableModal(userId) {
     disableTargetId = userId;
     document.getElementById('disableReason').value = '';
@@ -654,208 +324,155 @@ detailModal 內把 name/cellphone/email 改成 input（可編輯）
   async function confirmDisable() {
     const reason = document.getElementById('disableReason').value || '';
     try {
-      await apiRequest('patch', `/api/admin/users/${disableTargetId}/disable`, { disabled:true, reason });
+      await apiRequest('patch', `/api/admin/users/${disableTargetId}/disable`, { disabled: true, reason });
       $('#disableModal').modal('hide');
+      showMsg('帳號已停用。', 'success');
       await loadData();
-      showSuccess('已停用');
-    } catch (e) {}
+    } catch (_) {}
   }
 
   async function toggleDisable(userId, disabled) {
     try {
       await apiRequest('patch', `/api/admin/users/${userId}/disable`, { disabled, reason: '' });
+      showMsg(disabled ? '帳號已停用。' : '帳號已重新啟用。', 'success');
       await loadData();
-      showSuccess(disabled ? '已停用' : '已啟用');
-    } catch (e) {}
+    } catch (_) {}
   }
 
-  // ===== create =====
   function openCreateModal() {
-    clearModalMsg('createMsgBox');
-
+    setModalMessage('createMsgBox', '');
     document.getElementById('cAccount').value = '';
     document.getElementById('cPassword').value = '';
     document.getElementById('cName').value = '';
     document.getElementById('cCell').value = '';
     document.getElementById('cEmail').value = '';
-    applySecurityConfigToUI();
-
-    let html = '';
-    for (const r of roles) {
-      html += `
-        <div class="form-check">
-          <input class="form-check-input create-role-check" type="checkbox" value="${r.id}" id="crole-${r.id}">
-          <label class="form-check-label" for="crole-${r.id}">${escapeHtml(r.name)} (${escapeHtml(r.code)})</label>
-        </div>
-      `;
-    }
-    document.getElementById('createRoleList').innerHTML = html;
+    renderRoleChecklist('createRoleList', 'create-role-check', new Set());
     $('#createModal').modal('show');
   }
 
-  function checkAllCreateRoles(on) {
-    document.querySelectorAll('.create-role-check').forEach(x => x.checked = !!on);
-  }
+  function checkAllCreateRoles(checked) { document.querySelectorAll('.create-role-check').forEach((input) => { input.checked = checked; }); }
 
   async function createUser() {
-    const btn = document.getElementById('btnCreateUser');
-    btn.disabled = true;
-
+    const button = document.getElementById('btnCreateUser');
+    button.disabled = true;
     try {
-      clearModalMsg('createMsgBox');
-
-      const account = document.getElementById('cAccount').value.trim();
+      const account = (document.getElementById('cAccount').value || '').trim();
       const password = document.getElementById('cPassword').value || '';
-      const name = document.getElementById('cName').value.trim();
-      const cellphone = document.getElementById('cCell').value.trim();
-      const email = document.getElementById('cEmail').value.trim();
-
-      if (!account) { showCreateError('請輸入帳號'); return; }
-      if (!password.trim()) { showCreateError('請輸入密碼'); return; }
-      if (!cellphone) { showCreateError('手機為必填'); return; }
-      if (!email) { showCreateError('Email 為必填'); return; }
-
-      const roleIds = Array.from(document.querySelectorAll('.create-role-check'))
-        .filter(x => x.checked)
-        .map(x => Number(x.value));
-
-      await apiRequest(
-        'post',
-        '/api/admin/users',
-        { account, password, name, cellphone, email, roleIds },
-        { onError: (msg) => showCreateError(msg) }
-      );
-
-      showCreateSuccess('建立成功');
-      await closeModalAfter('#createModal', 800); // ✅ 成功停留 0.8 秒後關閉
+      const name = (document.getElementById('cName').value || '').trim();
+      const cellphone = (document.getElementById('cCell').value || '').trim();
+      const email = (document.getElementById('cEmail').value || '').trim();
+      const roleIds = Array.from(document.querySelectorAll('.create-role-check')).filter((input) => input.checked).map((input) => Number(input.value));
+      if (!account) { setModalMessage('createMsgBox', '請輸入帳號。'); return; }
+      if (!password.trim()) { setModalMessage('createMsgBox', '請輸入初始密碼。'); return; }
+      if (!cellphone) { setModalMessage('createMsgBox', '請輸入手機。'); return; }
+      if (!email) { setModalMessage('createMsgBox', '請輸入 Email。'); return; }
+      await apiRequest('post', '/api/admin/users', { account, password, name, cellphone, email, roleIds }, { onError: (message) => setModalMessage('createMsgBox', message) });
+      setModalMessage('createMsgBox', '帳號建立成功。', 'success');
+      showMsg('已新增人員帳號。', 'success');
+      setTimeout(() => $('#createModal').modal('hide'), 700);
       await loadData();
-    } catch (e) {
+    } catch (_) {
     } finally {
-      btn.disabled = false;
+      button.disabled = false;
     }
   }
 
-  // ===== detail + audit（✅ 可編輯）=====
+  function formatAuditDetail(detail) {
+    if (!detail) return '';
+    if (typeof detail === 'string') return detail;
+    try { return JSON.stringify(detail, null, 2); } catch (_) { return String(detail); }
+  }
+
+  function renderAuditRows(logs, replace) {
+    const target = document.getElementById('auditRows');
+    const rows = logs.length ? logs.map((log) => `
+      <tr>
+        <td>${escapeHtml(formatDateText(log.created_at))}</td>
+        <td>${escapeHtml(log.actor_account || log.actor_user_id || '系統')}</td>
+        <td>${escapeHtml(log.action || '—')}</td>
+        <td><pre class="audit-pre">${escapeHtml(formatAuditDetail(log.detail_json))}</pre></td>
+        <td>${escapeHtml(log.ip || '—')}</td>
+      </tr>
+    `).join('') : '<tr><td colspan="5" class="empty-state">目前沒有操作紀錄</td></tr>';
+    if (replace) target.innerHTML = rows;
+    else if (logs.length) {
+      if (target.querySelector('.empty-state')) target.innerHTML = rows;
+      else target.insertAdjacentHTML('beforeend', rows);
+    }
+    document.getElementById('btnMoreAudit').style.display = logs.length < auditLimit ? 'none' : 'inline-block';
+  }
+
   async function openDetailModal(userId) {
     try {
       detailTargetId = userId;
       auditTargetId = userId;
       auditOffset = 0;
-
-      clearModalMsg('detailMsgBox');
-
-      const [dRes, aRes] = await Promise.all([
+      setModalMessage('detailMsgBox', '');
+      const [detailRes, auditRes] = await Promise.all([
         apiRequest('get', `/api/admin/users/${userId}`),
-        apiRequest('get', `/api/admin/audit?target_user_id=${userId}&limit=${auditLimit}&offset=${auditOffset}`)
+        apiRequest('get', `/api/admin/audit?target_user_id=${userId}&limit=${auditLimit}&offset=${auditOffset}`),
       ]);
-
-      const u = dRes.user;
-      const rs = dRes.roles || [];
-      const roleText = rs.map(r => r.name).join(', ') || '—';
-
-      // 填入可編輯欄位
-      document.getElementById('dId').value = u.id ?? '';
-      document.getElementById('dAccount').value = u.account ?? '';
-      document.getElementById('dName').value = u.name ?? '';
-      document.getElementById('dCell').value = u.cellphone ?? '';
-      document.getElementById('dEmail').value = u.email ?? '';
-
-      document.getElementById('dDates').value = `建立:${u.create_date || ''} / 更新:${u.update_date || ''}`;
-      document.getElementById('dMetaText').innerText = `角色：${roleText}`;
-      document.getElementById('dAuditText').innerHTML =
-        (u.is_disabled ? `停用：是（${u.disabled_reason || ''}）` : `停用：否`) +
-        '　｜　' +
-        (u.password_reset_at ? `最後重設：${u.password_reset_at}` : `未曾由後台重設`);
-
-      applySecurityConfigToUI();
-
-      renderAuditRows(aRes.logs || [], true);
+      const user = detailRes.user || {};
+      const userRoles = detailRes.roles || [];
+      document.getElementById('dId').value = user.id || '';
+      document.getElementById('dAccount').value = user.account || '';
+      document.getElementById('dName').value = user.name || '';
+      document.getElementById('dCell').value = user.cellphone || '';
+      document.getElementById('dEmail').value = user.email || '';
+      document.getElementById('dDates').value = `建立 ${formatDateText(user.create_date)} / 更新 ${formatDateText(user.update_date)}`;
+      document.getElementById('dMetaText').textContent = `角色：${userRoles.map((role) => role.name).join('、') || '未設定'} ｜ 狀態：${user.is_disabled ? '已停用' : '啟用中'}`;
+      const auditText = [];
+      if (user.password_reset_at) auditText.push(`最近重設密碼：${formatDateText(user.password_reset_at)}`);
+      if (user.disabled_at) auditText.push(`停用時間：${formatDateText(user.disabled_at)}`);
+      if (user.disabled_reason) auditText.push(`停用原因：${user.disabled_reason}`);
+      document.getElementById('dAuditText').textContent = auditText.join(' ｜ ') || '尚無額外備註';
+      renderAuditRows(auditRes.logs || [], true);
       $('#detailModal').modal('show');
-    } catch (e) {
-      console.error(e);
-      showError('讀取詳情失敗（可能權限不足）');
+    } catch (error) {
+      showMsg(getApiErrorMessage(error, '讀取人員詳情失敗。'));
     }
   }
 
   async function saveDetailProfile() {
-    const btn = document.getElementById('btnSaveDetail');
-    btn.disabled = true;
-
+    const button = document.getElementById('btnSaveDetail');
+    button.disabled = true;
     try {
-      clearModalMsg('detailMsgBox');
-
-      const name = document.getElementById('dName').value.trim();
-      const cellphone = document.getElementById('dCell').value.trim();
-      const email = document.getElementById('dEmail').value.trim();
-
-      if (!cellphone) { showDetailError('手機為必填'); return; }
-      if (!email) { showDetailError('Email 為必填'); return; }
-
-      await apiRequest(
-        'patch',
-        `/api/admin/users/${detailTargetId}/profile`,
-        { name, cellphone, email },
-        { onError: (msg) => showDetailError(msg) }
-      );
-
-      showDetailSuccess('已更新基本資料');
-
-      // ✅ 同步更新列表
+      const name = (document.getElementById('dName').value || '').trim();
+      const cellphone = (document.getElementById('dCell').value || '').trim();
+      const email = (document.getElementById('dEmail').value || '').trim();
+      if (!cellphone) { setModalMessage('detailMsgBox', '請輸入手機。'); return; }
+      if (!email) { setModalMessage('detailMsgBox', '請輸入 Email。'); return; }
+      await apiRequest('patch', `/api/admin/users/${detailTargetId}/profile`, { name, cellphone, email }, { onError: (message) => setModalMessage('detailMsgBox', message) });
+      setModalMessage('detailMsgBox', '基本資料已更新。', 'success');
+      showMsg('已更新人員資料。', 'success');
       await loadData();
-
-      // ✅ 重新載入 detail 內容 + audit 第一頁（可選：你要最新紀錄就開）
-      // 這裡採「只刷新 audit」更直覺
+      const auditRes = await apiRequest('get', `/api/admin/audit?target_user_id=${detailTargetId}&limit=${auditLimit}&offset=0`, null, { silent: true });
       auditOffset = 0;
-      const aRes = await apiRequest('get', `/api/admin/audit?target_user_id=${detailTargetId}&limit=${auditLimit}&offset=${auditOffset}`);
-      renderAuditRows(aRes.logs || [], true);
-
-    } catch (e) {
+      renderAuditRows(auditRes.logs || [], true);
+    } catch (_) {
     } finally {
-      btn.disabled = false;
+      button.disabled = false;
     }
-  }
-
-  function renderAuditRows(logs, replace) {
-    let rows = '';
-    for (const l of logs) {
-      rows += `
-        <tr>
-          <td>${l.created_at || ''}</td>
-          <td>${escapeHtml(l.actor_account || l.actor_user_id || '')}</td>
-          <td>${escapeHtml(l.action || '')}</td>
-          <td><pre class="audit-pre">${escapeHtml(formatDetail(l.detail_json))}</pre></td>
-          <td>${escapeHtml(l.ip || '')}</td>
-        </tr>
-      `;
-    }
-    if (replace) {
-      document.getElementById('auditRows').innerHTML = rows || `<tr><td colspan="5">無紀錄</td></tr>`;
-    } else {
-      const cur = document.getElementById('auditRows').innerHTML;
-      if (cur.includes('無紀錄')) document.getElementById('auditRows').innerHTML = rows;
-      else document.getElementById('auditRows').innerHTML = cur + rows;
-    }
-
-    document.getElementById('btnMoreAudit').style.display = logs.length < auditLimit ? 'none' : 'inline-block';
   }
 
   async function loadMoreAudit() {
     if (!auditTargetId) return;
     auditOffset += auditLimit;
-
     try {
-      const aRes = await apiRequest('get', `/api/admin/audit?target_user_id=${auditTargetId}&limit=${auditLimit}&offset=${auditOffset}`);
-      const logs = aRes.logs || [];
-      renderAuditRows(logs, false);
-    } catch (e) {}
+      const response = await apiRequest('get', `/api/admin/audit?target_user_id=${auditTargetId}&limit=${auditLimit}&offset=${auditOffset}`, null, { silent: true });
+      renderAuditRows(response.logs || [], false);
+    } catch (error) {
+      showMsg(getApiErrorMessage(error, '讀取更多紀錄失敗。'));
+    }
   }
 
-  $(document).ready(() => {
+  document.addEventListener('DOMContentLoaded', async () => {
     clearMsg();
-    Promise.all([loadSecurityConfig(), loadData()]).catch(e => {
-      console.error(e);
-      alert('權限不足或系統錯誤');
-      location.href='/login';
-    });
+    try {
+      await Promise.all([loadSecurityConfig(), loadData()]);
+    } catch (error) {
+      showMsg(getApiErrorMessage(error, '讀取人員管理資料失敗。'));
+      if (error?.response?.status === 401) setTimeout(() => { window.location.href = '/login'; }, 700);
+    }
   });
 </script>

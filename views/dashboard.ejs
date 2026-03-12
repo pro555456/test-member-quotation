@@ -14,6 +14,7 @@
   </div>
 
   <div id="msgBox" class="alert d-none"></div>
+  <div id="summaryNotice" class="alert alert-info d-none"></div>
 
   <div class="row" id="summaryCards"></div>
 
@@ -85,7 +86,7 @@
         </div>
         <div class="form-group">
           <label for="importPath">備援路徑</label>
-          <input id="importPath" class="form-control" placeholder="可留空，例如 C:\\test\\quotes.xlsx">
+          <input id="importPath" class="form-control" placeholder="可留空，例如 C:\test\quotes.xlsx">
         </div>
         <div class="form-group">
           <label for="importSheet">工作表</label>
@@ -115,6 +116,17 @@
 
   function escapeHtml(value) {
     return String(value ?? '').replace(/[&<>"']/g, (char) => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;' }[char]));
+  }
+
+  function renderSummaryNotice(summary) {
+    const box = document.getElementById('summaryNotice');
+    if (!summary.showDataRangeHint) {
+      box.className = 'alert alert-info d-none';
+      box.textContent = '';
+      return;
+    }
+    box.className = 'alert alert-info';
+    box.textContent = `目前資料最新月份為 ${summary.latestQuoteMonth}，你現在看到的「本月案件數 / 本月未稅金額」是依系統當月 ${summary.currentMonth} 計算，所以顯示 0 屬正常現象。請到報價單列表或管理分析查看歷史資料。`;
   }
 
   function renderSummary(summary) {
@@ -150,12 +162,7 @@
   }
 
   function renderPlatformMix(platformMix) {
-    const items = [
-      ['iOS', platformMix.ios],
-      ['Android', platformMix.android],
-      ['Web', platformMix.web],
-      ['Other', platformMix.other],
-    ];
+    const items = [['iOS', platformMix.ios], ['Android', platformMix.android], ['Web', platformMix.web], ['Other', platformMix.other]];
     document.getElementById('platformMix').innerHTML = items.map(([label, value]) => `
       <div class="metric-card">
         <div class="metric-label mb-2">${escapeHtml(label)}</div>
@@ -183,12 +190,10 @@
 
   async function loadDashboard() {
     try {
-      const [summaryRes, trendsRes] = await Promise.all([
-        axios.get('/api/dashboard/summary'),
-        axios.get('/api/dashboard/trends'),
-      ]);
+      const [summaryRes, trendsRes] = await Promise.all([axios.get('/api/dashboard/summary'), axios.get('/api/dashboard/trends')]);
       const summary = summaryRes.data.summary || {};
       const trends = trendsRes.data.trends || {};
+      renderSummaryNotice(summary);
       renderSummary(summary);
       renderMonthly(trends.monthly || []);
       renderPlatformMix(trends.platformMix || {});
@@ -203,43 +208,30 @@
     const path = (document.getElementById('importPath').value || '').trim();
     const sheetName = (document.getElementById('importSheet').value || '2025').trim();
     const result = document.getElementById('importResult');
-
     if (!file && !path) {
       showMsg('請先選擇 Excel 檔案，或輸入備援路徑。', 'warning');
       return;
     }
-
     const formData = new FormData();
     if (file) formData.append('file', file);
     if (path) formData.append('filePath', path);
     formData.append('sheetName', sheetName);
     formData.append('dryRun', dryRun ? 'true' : 'false');
-
     setImportBusy(true, dryRun ? '執行 dry run 中…' : '匯入中…');
-
     try {
-      const response = await axios.post('/api/import/quotes', formData, {
-        headers: { 'Content-Type': 'multipart/form-data' },
-      });
+      const response = await axios.post('/api/import/quotes', formData, { headers: { 'Content-Type': 'multipart/form-data' } });
       result.textContent = JSON.stringify(response.data.result || {}, null, 2);
       setImportBusy(false, dryRun ? 'Dry run 完成。' : '匯入完成。');
       showMsg(dryRun ? 'Dry run 完成。' : 'Excel 匯入完成。', 'success');
-      if (!dryRun) {
-        await loadDashboard();
-      }
+      if (!dryRun) await loadDashboard();
     } catch (error) {
       const message = error?.response?.data?.message || error.message || '匯入失敗';
       result.textContent = JSON.stringify(error?.response?.data || { message }, null, 2);
       setImportBusy(false, '');
       showMsg(message, error?.response?.status === 401 ? 'warning' : 'danger');
-      if (error?.response?.status === 401) {
-        setTimeout(() => {
-          window.location.href = '/login';
-        }, 600);
-      }
+      if (error?.response?.status === 401) setTimeout(() => { window.location.href = '/login'; }, 600);
     }
   }
 
   document.addEventListener('DOMContentLoaded', loadDashboard);
 </script>
-

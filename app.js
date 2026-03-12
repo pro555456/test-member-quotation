@@ -1,168 +1,92 @@
-require("dotenv").config();
-const express = require("express");
-const path = require("path");
+ï»¿require('dotenv').config();
+
+const express = require('express');
+const path = require('path');
 const cookieParser = require('cookie-parser');
 const expressLayouts = require('express-ejs-layouts');
+const swaggerUi = require('swagger-ui-express');
 
+const swaggerDocument = require('./config/swagger.json');
+const pageRouter = require('./apis/pages');
+const apiRouter = require('./apis');
+const { sendError } = require('./utils/http');
+
+const PORT = Number(process.env.PORT || 3000);
 const app = express();
-app.set('trust proxy', 1); // ?¥ä???nginx/?å?ä»??ï¼ˆä?ç·šå¼·?ˆå»ºè­°é?ï¼?
-// ??Nginx ä¸Šç??å??šï?è®?IP æ­?¢ºï¼ˆä???audit ??ip ?ƒå…¨è®Šæ? 127.0.0.1ï¼?
-// app.jsï¼ˆåœ¨?€??middleware/router ?é¢ï¼?
-// app.set('trust proxy', 1);
 
-// nginx ?ä»£è¦æ?ï¼ˆä??šå¸¸å·²ç??‰ï?
-// proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-// proxy_set_header X-Real-IP $remote_addr;
-
-// const dotenv = require("dotenv").config();
-
-
-const swaggerUi = require("swagger-ui-express");
-const swaggerDocument = require("./config/swagger.json");
-const pageRouter = require("./apis/pages");
-const apiRouter = require("./apis/api");
-const PORT = 3000;
-
-
-
-
-
-// ?ºnode?›ä?ejs
-// ejs + layouts
-// extractScripts/extractStyles è®“ä??¨æ?äº›é??¢é?è¦é?å¤?<script> ??<style> ?‚å¯ä»¥å??²å»ï¼Œä??ƒä???
-app.set("view engine", "ejs");
+app.set('trust proxy', 1);
+app.set('etag', false);
+app.set('view engine', 'ejs');
 app.set('views', path.join(__dirname, 'views'));
 
 app.use(expressLayouts);
-app.set('layout', 'layout'); // views/layout.ejs
-
-// ???¯é¸ï¼šè?æ¯å€‹é??¢å¯ä»¥æ?å®šé?å¤?<head>ï¼ˆå??¸é??é?è¦ï?
+app.set('layout', 'layout');
 app.set('layout extractScripts', true);
 app.set('layout extractStyles', true);
 
-
-
-// ?Œæ? ?Šä???log middleware ç§»åˆ°?€?é¢ï¼ˆåœ¨ static ä¹‹å?ï¼‰ï??†å??‰è©²?¯ï?
 app.use(cookieParser());
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
 
-
-
-
-// --- å°‡æ—¥èª?Middleware ç§»åˆ°?€?é¢ ---
 app.use((req, res, next) => {
   const start = Date.now();
-  // æ³¨æ?ï¼šreq.body ??express.json() ä¹‹å??¯ç©º??
-  // ?ºä?æ­?¢ºè¨˜é? bodyï¼Œæ?å¥½æ”¾??express.json() ä¹‹å?
-  console.log(`[IN] ${req.method} ${req.originalUrl}`); 
+  console.log(`[IN] ${req.method} ${req.originalUrl}`);
   res.on('finish', () => {
-    console.log(`[OUT] ${req.method} ${req.originalUrl}`, 'status=', res.statusCode, `(${Date.now()-start}ms)`);
+    console.log(`[OUT] ${req.method} ${req.originalUrl} status=${res.statusCode} (${Date.now() - start}ms)`);
   });
   next();
- });
-// ------------------------------------
-// app.use((err, req, res, next) => {
-//   console.error('[UnhandledError]', err);   // ?“å???stack
-//   res.status(500).send('ç³»çµ±?¼ç??¯èª¤ï¼Œè?æ´½ç®¡?†å“¡'); // å°å?ç¶­æ?ä¸€?´è???
-// });
+});
 
-// ä½¿ç”¨ bootstrap
-app.use(express.static(path.join(__dirname, "node_modules/bootstrap/dist/")));
-// ä½¿ç”¨?œæ?è³‡æ?
-app.use(express.static(path.join(__dirname, "public")));
+app.use(
+  express.static(path.join(__dirname, 'node_modules/bootstrap/dist'), {
+    etag: false,
+    lastModified: false,
+    maxAge: 0,
+  })
+);
 
-// router è¨­å?
-app.use("/", pageRouter); // ?ç«¯?é¢
+app.use(
+  express.static(path.join(__dirname, 'public'), {
+    etag: false,
+    lastModified: false,
+    maxAge: 0,
+  })
+);
 
-// 1) ?ºä?éº?/api/me ?ƒå‡º??304ï¼?
-// API ??304 å¹¾ä?ä¸€å®šæ˜¯ä½ å??¢å???log middleware ä½ç½®?¯ä?ï¼šä???log middleware ?¾åœ¨ express.static() ä¹‹å?ï¼Œå??´æ?äº›è?æ±‚è¢«?œæ?å¿«å?/etag æ©Ÿåˆ¶å½±éŸ¿ï¼ˆæ??è¦½?¨å??Œä?è·¯å???If-None-Match/If-Modified-Sinceï¼‰ï?Express ?¯èƒ½??304??
+app.use((req, res, next) => {
+  if (!req.path.startsWith('/api')) {
+    res.set('Cache-Control', 'no-store');
+  }
+  next();
+});
 
-// ??ä¼æ¥­?ˆå?æ³•ï?API æ°¸é?ä¸è?è¢«å¿«??
-// ??API ä¸€å¾‹ç?æ­¢å¿«?–ï??¿å? 304?é¿?æ??é?è¢«å¿«?–ï?
+app.use('/', pageRouter);
+
 app.use('/api', (req, res, next) => {
   res.set('Cache-Control', 'no-store');
   next();
 });
 
-app.use("/api", apiRouter); // api router
+app.use('/api', apiRouter);
+app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerDocument));
 
-// swaggerè¨­å?æª”æ?
-app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(swaggerDocument));
-
-
-// ??4) ä½ ç? error handler å·²ç??‰ï?ä½†è??Œè? route ?„éŒ¯èª¤é€²å??»ã€?
-// ä½ ç›®??routes è£?catch å¾?safeJson(res,500...) ?¶å¯¦ä¹Ÿå¯ä»¥ï?ä½†ä??Ÿæ­£?¡ä??„æ˜¯ ReferenceError ?¼ç???try å¤–ã€æ? async ?¯èª¤æ²’å‚³?ã€?
-// ?‘ä??¢å·²ç¶“æ”¹??next(err)ï¼Œä???app.js ?™æ®µå°±æ?æ­?¸¸?¥åˆ°ï¼?
-// ?¯èª¤?•ç?ï¼ˆä?å®šè??¨æ??€å¾Œï??›å??¸ï?
-app.use((err, req, res, next) => {
-  console.error('[UnhandledError]', err);
-  res.status(500).send('ç³»çµ±?¼ç??¯èª¤ï¼Œè?æ´½ç®¡?†å“¡');
-});
-
-// 404ï¼ˆæ?å¾Œé¢?„ä???middlewareï¼?
 app.use((req, res) => {
   res.status(404).send('Not Found');
 });
 
+app.use((error, req, res, next) => {
+  console.error('[UnhandledError]', error);
 
-// ?±æ??§å·¥ä½œç?ä¾‹ï?æ¯å??˜æª¢?¥æ˜¯?¦æ??æ??ªä?æ¬¾è??®ï?ä¸¦è‡ª?•å?æ¶?
-// 1-4-2 è¶…æ??ªä?æ¬¾ï??’ç? job ?è?ï¼ˆè??Ÿæ??¶ï?
-// ä½ å¯?ˆç”¨?Œç°¡?®ç??ï???setInterval æ¯å??˜æ?ä¸€æ¬?PENDING & expires_at < NOW()??
-// ?¾åœ¨ app.js ?Ÿå?å¾Œï??–ç¨ç«?worker ?´å¥½ï¼?
+  if (req.path.startsWith('/api')) {
+    return sendError(res, error);
+  }
 
-// ???¸å®¹ mysql2/promise ?‡ä??ªå???query ?å‚³
-// ??app.js ? åœ¨ä¸Šæ–¹ï¼ˆsetInterval ä¹‹å?ï¼?
-async function dbQuery(db, sql, params = []) {
-  const r = await db.query(sql, params);
-  // mysql2/promise: [rows, fields]
-  if (Array.isArray(r) && Array.isArray(r[0])) return r[0];
-  // INSERT/UPDATE: [result, fields]
-  if (Array.isArray(r) && r[0] && typeof r[0] === 'object') return r[0];
-  // ?¶ä?å°è?ï¼šç›´?¥å? rows ??result
-  return r;
-}
-
-
-// ??ä»»ä? promise è¶…é??‚é??´æ¥ rejectï¼ˆé¿??Mongo ?¡æ­»? æ? IN æ²?OUTï¼?
-function withTimeout(promise, ms = 1500, label = 'timeout') {
-  let t;
-  const timeout = new Promise((_, reject) => {
-    t = setTimeout(() => reject(new Error(label)), ms);
-  });
-  return Promise.race([promise, timeout]).finally(() => clearTimeout(t));
-}
-
-const mySqlDb = require('./connection/mySqlConnection');
-
-function startLegacyOrderExpiryJob() {
-  return setInterval(async () => {
-    try {
-      const rows = await dbQuery(
-        mySqlDb,
-        `SELECT trade_no FROM shop_order
-         WHERE status2='PENDING'
-           AND expires_at IS NOT NULL
-           AND expires_at < NOW()
-         LIMIT 50`
-      );
-
-      const expired = Array.isArray(rows) ? rows : [];
-      for (const o of expired) {
-        await cancelAndRestockByTradeNo(o.trade_no, 'EXPIRED');
-      }
-    } catch (e) {
-      if (e?.code !== 'ER_NO_SUCH_TABLE') {
-        console.error('[JOB] expire orders failed:', e);
-      }
-    }
-  }, 60 * 1000);
-}
+  return res.status(error?.status || 500).send(error?.message || 'ç³»çµ±ç™¼ç”ŸéŒ¯èª¤');
+});
 
 function startServer(port = PORT) {
-  startLegacyOrderExpiryJob();
   return app.listen(port, () => {
-    console.log('Server is listen on port:', port);
+    console.log(`Server is listen on port: ${port}`);
   });
 }
 
@@ -172,4 +96,3 @@ if (require.main === module) {
 
 module.exports = app;
 module.exports.startServer = startServer;
-

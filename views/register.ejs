@@ -1,56 +1,56 @@
 ﻿<%- include('./basic/auth_card.ejs', {
   authWrapClass: '',
-  titleText: '?閮餃?',
-  subtitleText: '撱箇??函? Game QA Hub 撣唾?嚗???Email 撽?敺?臭蝙??,
+  titleText: '建立帳號',
+  subtitleText: '建立 Game QA Hub 內部帳號後，請前往 Email 完成驗證。',
   body: `
     <div class="form-group">
-      <label for="name">憪?</label>
-      <input id="name" class="form-control" placeholder="隢撓?亙???>
+      <label for="name">姓名</label>
+      <input id="name" class="form-control" placeholder="請輸入姓名">
     </div>
 
     <div class="form-group">
-      <label for="cellphone">??窗?餉店嚗?憛恬?</label>
-      <input id="cellphone" class="form-control" placeholder="靘?09xxxxxxxx">
+      <label for="cellphone">手機號碼</label>
+      <input id="cellphone" class="form-control" placeholder="例如 09xxxxxxxx">
     </div>
 
     <div class="form-group">
-      <label for="email">Email嚗?憛恬?</label>
-      <input id="email" class="form-control" placeholder="靘?name@example.com">
-      <div id="emailHint" class="small-muted mt-1">Email 閬?頛銝?..</div>
+      <label for="email">Email</label>
+      <input id="email" class="form-control" placeholder="例如 name@example.com">
+      <div id="emailHint" class="small-muted mt-1">Email 將用於驗證與通知。</div>
     </div>
 
     <div class="form-group">
-      <label for="birthday">?嚗憛恬?</label>
-      <input id="birthday" class="form-control" placeholder="YYYY-MM-DD 靘? 2022-01-01">
+      <label for="birthday">生日</label>
+      <input id="birthday" class="form-control" placeholder="YYYY-MM-DD，例如 2022-01-01">
     </div>
 
-    <hr/>
+    <hr />
 
     <div class="form-group">
-      <label for="account">撣唾?</label>
-      <input id="account" class="form-control" placeholder="撣唾?閬?頛銝?..">
-      <div id="accountHint" class="small-muted mt-1">撣唾?閬?頛銝?..</div>
-    </div>
-
-    <div class="form-group">
-      <label for="password">撖Ⅳ</label>
-      <input id="password" type="password" class="form-control" placeholder="撖Ⅳ閬?頛銝?..">
-      <div id="pwdHint" class="small-muted mt-1">撖Ⅳ閬?頛銝?..</div>
+      <label for="account">帳號</label>
+      <input id="account" class="form-control" placeholder="請輸入帳號">
+      <div id="accountHint" class="small-muted mt-1">帳號需符合安全設定。</div>
     </div>
 
     <div class="form-group">
-      <label for="password2">蝣箄?撖Ⅳ</label>
-      <input id="password2" type="password" class="form-control" placeholder="隢?頛詨銝甈∪?蝣?>
+      <label for="password">密碼</label>
+      <input id="password" type="password" class="form-control" placeholder="請輸入密碼">
+      <div id="pwdHint" class="small-muted mt-1">密碼需符合安全設定。</div>
+    </div>
+
+    <div class="form-group">
+      <label for="password2">再次輸入密碼</label>
+      <input id="password2" type="password" class="form-control" placeholder="請再次輸入密碼">
     </div>
 
     <div class="text-center mb-3">
-      <span class="small-muted">撌脩??董??</span>
-      <a href="/login" class="ml-1">???餃</a>
+      <span class="small-muted">已經有帳號？</span>
+      <a href="/login" class="ml-1">前往登入</a>
     </div>
 
     <div class="text-center">
-      <button id="btnRegister" type="button" onclick="doRegister()" class="btn btn-danger mr-2">閮餃?</button>
-      <button type="button" class="btn btn-outline-secondary" onclick="resetForm()">?‵</button>
+      <button id="btnRegister" type="button" onclick="doRegister()" class="btn btn-danger mr-2">建立帳號</button>
+      <button type="button" class="btn btn-outline-secondary" onclick="resetForm()">清除</button>
     </div>
   `
 }) %>
@@ -62,10 +62,10 @@
     EMAIL_MAX: 200,
     PWD_MIN: 10,
     PWD_MAX: 72,
-    passwordPolicyText: '撖Ⅳ?蝚血?蝟餌絞閬?嚗??憭批?撖怠?瘥摮?蝚西?嚗?銝?撣唾?嚗?
+    passwordPolicyText: '密碼需符合系統安全設定，包含長度與複雜度要求。',
   };
 
-  function showMsg(msg, type='danger', autoHideMs=0) {
+  function showMsg(msg, type = 'danger', autoHideMs = 0) {
     const box = document.getElementById('msgBox');
     box.style.display = 'block';
     box.classList.remove('alert-danger', 'alert-success', 'alert-warning', 'alert-info');
@@ -81,7 +81,7 @@
   }
 
   function showError(msg) { showMsg(msg, 'danger'); }
-  function showSuccess(msg) { showMsg(msg, 'success', 800); }
+  function showSuccess(msg) { showMsg(msg, 'success', 1000); }
   function showInfo(msg) { showMsg(msg, 'info'); }
 
   function clearMsg() {
@@ -90,7 +90,7 @@
     box.innerText = '';
   }
 
-  function getApiErrorMessage(err, fallback='??憭望?') {
+  function getApiErrorMessage(err, fallback = '操作失敗') {
     const data = err?.response?.data;
     return data?.message || err?.message || fallback;
   }
@@ -111,29 +111,29 @@
     const acc = document.getElementById('account');
     if (acc) {
       acc.setAttribute('maxlength', String(securityCfg.ACCOUNT_MAX));
-      acc.setAttribute('placeholder', `靘?user01 / wilson.tsai嚗?{securityCfg.ACCOUNT_MIN}嚚?{securityCfg.ACCOUNT_MAX}蝣潘?`);
+      acc.setAttribute('placeholder', `例如 user01 / wilson.tsai，${securityCfg.ACCOUNT_MIN} 到 ${securityCfg.ACCOUNT_MAX} 字元`);
     }
 
     const accountHint = document.getElementById('accountHint');
     if (accountHint) {
-      accountHint.innerText = `撣唾?嚗?{securityCfg.ACCOUNT_MIN}嚚?{securityCfg.ACCOUNT_MAX}蝣潘?擐?瘥??瘥??臬 . _ -`;
+      accountHint.innerText = `帳號需為 ${securityCfg.ACCOUNT_MIN} 到 ${securityCfg.ACCOUNT_MAX} 字元，可使用英文、數字與 . _ -`;
     }
 
     const em = document.getElementById('email');
     if (em) {
       em.setAttribute('maxlength', String(securityCfg.EMAIL_MAX));
-      em.setAttribute('placeholder', `靘?name@example.com嚗???${securityCfg.EMAIL_MAX} 摮?`);
+      em.setAttribute('placeholder', `例如 name@example.com，最多 ${securityCfg.EMAIL_MAX} 字元`);
     }
 
     const emailHint = document.getElementById('emailHint');
     if (emailHint) {
-      emailHint.innerText = `Email嚗???${securityCfg.EMAIL_MAX} 摮???箏?瘜?Email ?澆?`;
+      emailHint.innerText = `Email 最多 ${securityCfg.EMAIL_MAX} 字元，將用於驗證與通知。`;
     }
 
     const pwd = document.getElementById('password');
     if (pwd) {
       pwd.setAttribute('maxlength', String(securityCfg.PWD_MAX));
-      pwd.setAttribute('placeholder', `隢撓?亦泵????撖Ⅳ嚗?{securityCfg.PWD_MIN}嚚?{securityCfg.PWD_MAX}蝣潘?`);
+      pwd.setAttribute('placeholder', `請輸入密碼，${securityCfg.PWD_MIN} 到 ${securityCfg.PWD_MAX} 字元`);
     }
 
     const pwdHint = document.getElementById('pwdHint');
@@ -151,16 +151,16 @@
         EMAIL_MAX: Number(data.EMAIL_MAX) || securityCfg.EMAIL_MAX,
         PWD_MIN: Number(data.PWD_MIN) || securityCfg.PWD_MIN,
         PWD_MAX: Number(data.PWD_MAX) || securityCfg.PWD_MAX,
-        passwordPolicyText: String(data.passwordPolicyText || securityCfg.passwordPolicyText)
+        passwordPolicyText: String(data.passwordPolicyText || securityCfg.passwordPolicyText),
       };
-    } catch {
+    } catch (_) {
     } finally {
       applySecurityConfigToUI();
     }
   }
 
   function resetForm() {
-    ['name', 'cellphone', 'email', 'birthday', 'account', 'password', 'password2'].forEach(id => {
+    ['name', 'cellphone', 'email', 'birthday', 'account', 'password', 'password2'].forEach((id) => {
       const el = document.getElementById(id);
       if (el) el.value = '';
     });
@@ -181,13 +181,14 @@
       const password = document.getElementById('password').value || '';
       const password2 = document.getElementById('password2').value || '';
 
-      if (!account) { showError('隢撓?亙董??); return; }
-      if (!password.trim()) { showError('隢撓?亙?蝣?); return; }
-      if (password !== password2) { showError('?拇活撖Ⅳ銝??湛?隢??啗撓??); return; }
-      if (!cellphone) { showError('???箏?憛?); return; }
-      if (!email) { showError('Email ?箏?憛?); return; }
+      if (!name) { showError('請輸入姓名'); return; }
+      if (!account) { showError('請輸入帳號'); return; }
+      if (!password.trim()) { showError('請輸入密碼'); return; }
+      if (password !== password2) { showError('兩次輸入的密碼不一致'); return; }
+      if (!cellphone) { showError('請輸入手機號碼'); return; }
+      if (!email) { showError('請輸入 Email'); return; }
 
-      showInfo('?閮餃?銝凌?);
+      showInfo('建立帳號中…');
 
       const data = await apiRequest('post', '/api/register', {
         account,
@@ -195,16 +196,14 @@
         name,
         cellphone,
         email,
-        birthday
+        birthday,
       });
 
-      showSuccess(data?.message || '閮餃?撌脤');
-
+      showSuccess(data?.message || '帳號建立完成');
       setTimeout(() => {
         window.location.assign('/login');
-      }, 850);
-
-    } catch (e) {
+      }, 1000);
+    } catch (_) {
     } finally {
       btn.disabled = false;
     }
@@ -213,7 +212,7 @@
   document.addEventListener('keydown', function (e) {
     if (e.key === 'Enter') {
       const active = document.activeElement;
-      if (active && ['name','cellphone','email','birthday','account','password','password2'].includes(active.id)) {
+      if (active && ['name', 'cellphone', 'email', 'birthday', 'account', 'password', 'password2'].includes(active.id)) {
         e.preventDefault();
         doRegister();
       }

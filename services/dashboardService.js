@@ -1,4 +1,4 @@
-﻿const mySqlDb = require("../connection/mySqlConnection");
+const mySqlDb = require("../connection/mySqlConnection");
 
 async function getSummary() {
   const [totals] = await mySqlDb.query(
@@ -10,19 +10,34 @@ async function getSummary() {
         SUM(CASE WHEN case_status IN ('SIGNED', 'IN_PROGRESS', 'COMPLETED') THEN 1 ELSE 0 END) AS in_progress_count,
         AVG(CASE WHEN closed_at IS NULL THEN NULL ELSE DATEDIFF(closed_at, quote_date) END) AS avg_close_days,
         SUM(CASE WHEN case_status <> 'CLOSED' AND DATEDIFF(CURDATE(), quote_date) > 30 THEN 1 ELSE 0 END) AS overdue_case_count,
-        COUNT(DISTINCT CASE WHEN DATE_FORMAT(quote_date, '%Y-%m') = DATE_FORMAT(CURDATE(), '%Y-%m') THEN customer_name END) AS active_customer_count
+        COUNT(DISTINCT CASE WHEN DATE_FORMAT(quote_date, '%Y-%m') = DATE_FORMAT(CURDATE(), '%Y-%m') THEN customer_name END) AS active_customer_count,
+        COUNT(*) AS total_case_count,
+        MIN(quote_date) AS earliest_quote_date,
+        MAX(quote_date) AS latest_quote_date
      FROM inspection_quotes`
   );
 
+  const latestQuoteDate = totals?.latest_quote_date || null;
+  const earliestQuoteDate = totals?.earliest_quote_date || null;
+  const latestQuoteMonth = latestQuoteDate ? String(latestQuoteDate).slice(0, 7) : null;
+  const monthCaseCount = Number(totals?.month_case_count || 0);
+  const totalCaseCount = Number(totals?.total_case_count || 0);
+
   return {
     todayCaseCount: Number(totals?.today_case_count || 0),
-    monthCaseCount: Number(totals?.month_case_count || 0),
+    monthCaseCount,
     monthUntaxedTotal: Number(totals?.month_total_untaxed || 0),
     pendingSignCount: Number(totals?.pending_sign_count || 0),
     inProgressCount: Number(totals?.in_progress_count || 0),
     avgCloseDays: totals?.avg_close_days === null ? null : Number(Number(totals.avg_close_days).toFixed(1)),
     overdueCaseCount: Number(totals?.overdue_case_count || 0),
     activeCustomerCount: Number(totals?.active_customer_count || 0),
+    totalCaseCount,
+    earliestQuoteDate,
+    latestQuoteDate,
+    latestQuoteMonth,
+    currentMonth: new Date().toISOString().slice(0, 7),
+    showDataRangeHint: totalCaseCount > 0 && monthCaseCount === 0 && !!latestQuoteMonth,
   };
 }
 

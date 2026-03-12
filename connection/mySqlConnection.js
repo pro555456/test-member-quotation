@@ -1,4 +1,4 @@
-const mysql = require('mysql2/promise');
+﻿const mysql = require('mysql2/promise');
 
 const config = {
   host: process.env.DB_HOST || '127.0.0.1',
@@ -38,6 +38,11 @@ async function query(sql, params = []) {
   return rows;
 }
 
+async function queryOne(sql, params = []) {
+  const rows = await query(sql, params);
+  return Array.isArray(rows) && rows.length ? rows[0] : null;
+}
+
 async function withTransaction(fn) {
   const conn = await pool.getConnection();
 
@@ -48,6 +53,10 @@ async function withTransaction(fn) {
       query: async (sql, params = []) => {
         const [rows] = await conn.execute(sql, params);
         return rows;
+      },
+      queryOne: async (sql, params = []) => {
+        const [rows] = await conn.execute(sql, params);
+        return Array.isArray(rows) && rows.length ? rows[0] : null;
       },
     };
 
@@ -70,6 +79,6 @@ async function withTransaction(fn) {
 module.exports = {
   pool,
   query,
+  queryOne,
   withTransaction,
 };
-
