@@ -1,0 +1,387 @@
+﻿<div class="container-fluid">
+  <div class="hero-panel mb-4">
+    <div class="row align-items-end">
+      <div class="col-lg-8">
+        <div class="section-kicker mb-2">Administrator Analytics</div>
+        <h1 class="mb-3">管理分析中心</h1>
+        <p class="mb-0">從月、季、半年、年四種節奏檢視營收、案件結案效率、未收款壓力與高風險客戶，讓管理端能更快做出行動。</p>
+      </div>
+      <div class="col-lg-4 mt-3 mt-lg-0 text-lg-right">
+        <a class="btn btn-light mr-2" href="/dashboard">回一般儀表板</a>
+        <a class="btn btn-outline-light" href="/quotes">查看報價單</a>
+      </div>
+    </div>
+  </div>
+
+  <div id="msgBox" class="alert d-none"></div>
+
+  <div class="data-card mb-4">
+    <div class="d-flex flex-column flex-lg-row justify-content-between align-items-lg-center mb-3">
+      <div>
+        <div class="section-kicker">View Switch</div>
+        <div class="section-title">分析週期切換</div>
+      </div>
+      <div class="period-switch mt-3 mt-lg-0" id="periodSwitch">
+        <button class="btn btn-outline-secondary active" data-period="month">每月</button>
+        <button class="btn btn-outline-secondary" data-period="quarter">每季</button>
+        <button class="btn btn-outline-secondary" data-period="halfYear">每半年</button>
+        <button class="btn btn-outline-secondary" data-period="year">每年</button>
+      </div>
+    </div>
+
+    <div class="toolbar-grid mb-3">
+      <div>
+        <label for="startDate">開始日期</label>
+        <input id="startDate" type="date" class="form-control">
+      </div>
+      <div>
+        <label for="endDate">結束日期</label>
+        <input id="endDate" type="date" class="form-control">
+      </div>
+      <div class="d-flex align-items-end">
+        <button class="btn btn-primary mr-2" onclick="applyDateRange()">套用區間</button>
+        <button class="btn btn-outline-secondary" onclick="clearDateRange()">清除</button>
+      </div>
+      <div class="d-flex align-items-end justify-content-lg-end export-actions">
+        <button class="btn btn-outline-success mr-2" onclick="exportExcelReport()">匯出 Excel</button>
+        <button class="btn btn-danger" onclick="exportPdfReport()">匯出 PDF</button>
+      </div>
+    </div>
+
+    <div class="form-note" id="periodHint">目前載入中…</div>
+    <div class="form-note mt-2">說明：趨勢、排行、狀態分布、交叉矩陣都會依你選的週期與日期區間變動；未結案 / 未收款清單則固定顯示目前待追蹤的即時快照。</div>
+  </div>
+
+  <div class="row" id="adminSummaryCards"></div>
+
+  <div class="row mt-4">
+    <div class="col-xl-8 mb-4">
+      <div class="data-card h-100">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+          <div>
+            <div class="section-kicker">Trend</div>
+            <div class="section-title">營收與案件趨勢圖</div>
+          </div>
+          <span class="form-note">金額越高，柱狀條越長</span>
+        </div>
+        <div id="trendChart" class="trend-chart-stack"></div>
+      </div>
+    </div>
+    <div class="col-xl-4 mb-4">
+      <div class="data-card h-100 mb-4">
+        <div class="section-kicker">Case Status</div>
+        <div class="section-title mb-3">案件狀態分布</div>
+        <div id="caseStatusGrid" class="status-grid"></div>
+      </div>
+      <div class="data-card h-100">
+        <div class="section-kicker">Billing Status</div>
+        <div class="section-title mb-3">請款狀態分布</div>
+        <div id="billingStatusGrid" class="status-grid"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="row">
+    <div class="col-12 mb-4">
+      <div class="data-card h-100">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+          <div>
+            <div class="section-kicker">Customer x Platform</div>
+            <div class="section-title">客戶別 / 平台別交叉分析圖</div>
+          </div>
+          <span class="form-note">同時看案件數與金額熱度</span>
+        </div>
+        <div id="crossInsight" class="form-note mb-3"></div>
+        <div id="customerPlatformCross" class="cross-matrix"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="row">
+    <div class="col-xl-5 mb-4">
+      <div class="data-card h-100">
+        <div class="section-kicker">Top Customers</div>
+        <div class="section-title mb-3">當期客戶排行</div>
+        <div class="table-responsive">
+          <table class="table table-hover">
+            <thead>
+              <tr>
+                <th>客戶</th>
+                <th>案件數</th>
+                <th>未稅金額</th>
+                <th>未收款</th>
+              </tr>
+            </thead>
+            <tbody id="topCustomersAdminBody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+    <div class="col-xl-7 mb-4">
+      <div class="data-card h-100">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+          <div>
+            <div class="section-kicker">Outstanding</div>
+            <div class="section-title">未結案 / 未收款重點客戶</div>
+          </div>
+          <span class="form-note">依 outstanding 金額排序</span>
+        </div>
+        <div class="table-responsive">
+          <table class="table table-hover">
+            <thead>
+              <tr>
+                <th>客戶</th>
+                <th>未結案</th>
+                <th>未收款</th>
+                <th>未結案金額</th>
+                <th>未收款金額</th>
+                <th>最久未結案天數</th>
+              </tr>
+            </thead>
+            <tbody id="outstandingCustomersBody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  const state = {
+    period: 'month',
+    startDate: '',
+    endDate: '',
+  };
+
+  function formatMoney(value) {
+    return new Intl.NumberFormat('zh-TW', { style: 'currency', currency: 'TWD', maximumFractionDigits: 0 }).format(Number(value || 0));
+  }
+
+  function escapeHtml(value) {
+    return String(value ?? '').replace(/[&<>"']/g, (char) => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;' }[char]));
+  }
+
+  function showMsg(message, type = 'danger') {
+    const box = document.getElementById('msgBox');
+    box.className = `alert alert-${type}`;
+    box.textContent = message;
+  }
+
+  function setActivePeriod(period) {
+    state.period = period;
+    document.querySelectorAll('#periodSwitch button').forEach((button) => {
+      button.classList.toggle('active', button.dataset.period === period);
+    });
+  }
+
+  function syncStateFromInputs() {
+    state.startDate = (document.getElementById('startDate').value || '').trim();
+    state.endDate = (document.getElementById('endDate').value || '').trim();
+  }
+
+  function buildQueryString() {
+    const params = new URLSearchParams();
+    params.set('period', state.period);
+    if (state.startDate) params.set('startDate', state.startDate);
+    if (state.endDate) params.set('endDate', state.endDate);
+    return params.toString();
+  }
+
+  function renderSummary(summary) {
+    const items = [
+      { label: '當期案件數', value: summary.periodCaseCount, note: '所選週期內建立案件數' },
+      { label: '當期未稅營收', value: formatMoney(summary.periodUntaxedTotal), note: `當期活躍客戶 ${summary.periodCustomerCount} 家` },
+      { label: '當期已結案', value: summary.periodClosedCount, note: `平均結案 ${summary.periodAvgCloseDays ?? '—'} 天` },
+      { label: '未結案案件', value: summary.openCaseCount, note: `未結案金額 ${formatMoney(summary.openCaseAmount)}` },
+      { label: '未收款客戶', value: summary.unpaidCustomerCount, note: `未收款案件 ${summary.unpaidCaseCount} 件` },
+      { label: '未收款金額', value: formatMoney(summary.unpaidAmount), note: `逾期未結案 ${summary.overdueOpenCaseCount} 件` },
+    ];
+
+    document.getElementById('adminSummaryCards').innerHTML = items.map((item) => `
+      <div class="col-xl-4 col-md-6 mb-4">
+        <div class="metric-card h-100">
+          <div class="metric-label mb-2">${escapeHtml(item.label)}</div>
+          <div class="metric-value mb-2">${escapeHtml(item.value)}</div>
+          <div class="metric-note">${escapeHtml(item.note)}</div>
+        </div>
+      </div>
+    `).join('');
+  }
+
+  function renderTrend(rows) {
+    const container = document.getElementById('trendChart');
+    const maxRevenue = Math.max(...rows.map((row) => Number(row.untaxedTotal || 0)), 1);
+    container.innerHTML = rows.length ? rows.map((row) => `
+      <div class="trend-row">
+        <div class="trend-label">${escapeHtml(row.label)}</div>
+        <div class="trend-bar-wrap">
+          <div class="trend-bar" style="width:${Math.max((Number(row.untaxedTotal || 0) / maxRevenue) * 100, 6)}%"></div>
+          <div class="trend-meta">
+            <span>${escapeHtml(formatMoney(row.untaxedTotal))}</span>
+            <span>案件 ${escapeHtml(row.caseCount)}</span>
+            <span>已結案 ${escapeHtml(row.closedCount)}</span>
+            <span>未收款 ${escapeHtml(formatMoney(row.unsettledAmount))}</span>
+          </div>
+        </div>
+      </div>
+    `).join('') : '<div class="empty-state">目前沒有趨勢資料</div>';
+  }
+
+  function renderStatusGrid(elementId, rows, positiveClass) {
+    const el = document.getElementById(elementId);
+    el.innerHTML = rows.length ? rows.map((row) => `
+      <div class="status-metric ${positiveClass}">
+        <div class="metric-label mb-2">${escapeHtml(row.label)}</div>
+        <div class="metric-value">${escapeHtml(row.total)}</div>
+      </div>
+    `).join('') : '<div class="empty-state">目前沒有資料</div>';
+  }
+
+  function renderCrossMatrix(cross) {
+    const container = document.getElementById('customerPlatformCross');
+    const insight = document.getElementById('crossInsight');
+    const platforms = cross?.platforms || [];
+    const rows = cross?.rows || [];
+    const totals = cross?.totals || [];
+    const maxAmount = Number(cross?.maxAmount || 1);
+
+    if (!rows.length) {
+      container.innerHTML = '<div class="empty-state">目前沒有交叉分析資料</div>';
+      insight.textContent = '目前沒有可比較的客戶 / 平台資料。';
+      return;
+    }
+
+    const strongest = totals.slice().sort((a, b) => b.amount - a.amount)[0];
+    insight.textContent = strongest ? `當前最強平台為 ${strongest.label}，累積金額 ${formatMoney(strongest.amount)}。` : '';
+
+    const header = ['客戶', '總案件', '總金額', ...platforms.map((platform) => platform.label)];
+    const bodyRows = rows.map((row) => {
+      const platformCells = platforms.map((platform) => {
+        const cell = row.platforms.find((item) => item.key === platform.key) || { caseCount: 0, amount: 0 };
+        const intensity = Math.max(Math.min((Number(cell.amount || 0) / maxAmount) * 100, 100), 0);
+        return `
+          <td>
+            <div class="cross-cell" style="--fill:${intensity}%">
+              <div class="cross-cell-count">${escapeHtml(cell.caseCount)} 件</div>
+              <div class="cross-cell-amount">${escapeHtml(formatMoney(cell.amount))}</div>
+            </div>
+          </td>`;
+      }).join('');
+
+      return `
+        <tr>
+          <td><div class="font-weight-bold">${escapeHtml(row.customerName)}</div></td>
+          <td>${escapeHtml(row.totalCaseCount)}</td>
+          <td>${escapeHtml(formatMoney(row.totalAmount))}</td>
+          ${platformCells}
+        </tr>`;
+    }).join('');
+
+    const footerCells = totals.map((platform) => `
+      <td>
+        <div class="font-weight-bold">${escapeHtml(platform.caseCount)} 件</div>
+        <div class="form-note">${escapeHtml(formatMoney(platform.amount))}</div>
+      </td>`).join('');
+
+    container.innerHTML = `
+      <div class="table-responsive">
+        <table class="table table-hover cross-table">
+          <thead>
+            <tr>${header.map((cell) => `<th>${escapeHtml(cell)}</th>`).join('')}</tr>
+          </thead>
+          <tbody>${bodyRows}</tbody>
+          <tfoot>
+            <tr>
+              <th>平台總計</th>
+              <th></th>
+              <th></th>
+              ${footerCells}
+            </tr>
+          </tfoot>
+        </table>
+      </div>`;
+  }
+
+  function renderTopCustomers(rows) {
+    const body = document.getElementById('topCustomersAdminBody');
+    body.innerHTML = rows.length ? rows.map((row) => `
+      <tr>
+        <td>
+          <div class="font-weight-bold">${escapeHtml(row.customerName)}</div>
+          <div class="form-note">未結案 ${escapeHtml(row.openCaseCount)} 件</div>
+        </td>
+        <td>${escapeHtml(row.caseCount)}</td>
+        <td>${escapeHtml(formatMoney(row.untaxedTotal))}</td>
+        <td>${escapeHtml(formatMoney(row.unpaidAmount))}</td>
+      </tr>
+    `).join('') : '<tr><td colspan="4" class="empty-state">目前沒有排行資料</td></tr>';
+  }
+
+  function renderOutstanding(rows) {
+    const body = document.getElementById('outstandingCustomersBody');
+    body.innerHTML = rows.length ? rows.map((row) => `
+      <tr>
+        <td>
+          <div class="font-weight-bold">${escapeHtml(row.customerName)}</div>
+          <div class="form-note">最新報價 ${escapeHtml(row.latestQuoteDate || '—')}</div>
+        </td>
+        <td>${escapeHtml(row.openCaseCount)}</td>
+        <td>${escapeHtml(row.unpaidCaseCount)}</td>
+        <td>${escapeHtml(formatMoney(row.openCaseAmount))}</td>
+        <td>${escapeHtml(formatMoney(row.unpaidAmount))}</td>
+        <td>${escapeHtml(row.oldestOpenDays)}</td>
+      </tr>
+    `).join('') : '<tr><td colspan="6" class="empty-state">目前沒有未結案或未收款客戶</td></tr>';
+  }
+
+  async function loadAnalytics(period = state.period) {
+    try {
+      setActivePeriod(period);
+      syncStateFromInputs();
+      document.getElementById('periodHint').textContent = '資料載入中…';
+      const response = await axios.get(`/api/dashboard/admin-analytics?${buildQueryString()}`);
+      const analytics = response.data.analytics || {};
+      renderSummary(analytics.summary || {});
+      renderTrend(analytics.trend || []);
+      renderStatusGrid('caseStatusGrid', analytics.caseStatusBreakdown || [], 'is-case');
+      renderStatusGrid('billingStatusGrid', analytics.billingStatusBreakdown || [], 'is-billing');
+      renderCrossMatrix(analytics.customerPlatformCross || {});
+      renderTopCustomers(analytics.topCustomers || []);
+      renderOutstanding(analytics.outstandingCustomers || []);
+      document.getElementById('periodHint').textContent = `${analytics.periodLabel || period} 視角分析已更新`;
+    } catch (error) {
+      showMsg(error?.response?.data?.message || '讀取管理分析失敗');
+      if (error?.response?.status === 401 || error?.response?.status === 403) {
+        setTimeout(() => { window.location.href = '/dashboard'; }, 600);
+      }
+    }
+  }
+
+  function applyDateRange() {
+    loadAnalytics(state.period);
+  }
+
+  function clearDateRange() {
+    document.getElementById('startDate').value = '';
+    document.getElementById('endDate').value = '';
+    syncStateFromInputs();
+    loadAnalytics(state.period);
+  }
+
+  function exportExcelReport() {
+    syncStateFromInputs();
+    window.location.href = `/api/dashboard/admin-analytics/export/excel?${buildQueryString()}`;
+  }
+
+  function exportPdfReport() {
+    syncStateFromInputs();
+    window.open(`/admin/analytics/print?${buildQueryString()}&autoprint=1`, '_blank');
+  }
+
+  document.addEventListener('DOMContentLoaded', () => {
+    document.querySelectorAll('#periodSwitch button').forEach((button) => {
+      button.addEventListener('click', () => loadAnalytics(button.dataset.period));
+    });
+    loadAnalytics('month');
+  });
+</script>

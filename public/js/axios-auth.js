@@ -1,42 +1,33 @@
-// 可以。你現在的現象很像 axios-auth.js 把所有 401都當成「登入逾期」處理，於是：
-// 公開頁面（/register、/verify-register-email）打到某支 401 API
-// 攔截器就去 /api/refresh
-// refresh 也失敗
-// 最後強制導回 /login
-// 這對「未登入也能看的頁面」是不對的。
-// 下面我直接給你一份 可覆蓋版 public/js/axios-auth.js，做了這幾件事：
-// ✅ 只有「需要登入的 API」才會嘗試 refresh
-// ✅ 對公開頁 API 的 401，不 refresh、不跳 login
-// ✅ 對 /api/me 這種「用來檢查是否登入」的 API，401 視為正常，不 refresh
-// ✅ 避免 refresh 無限迴圈
-// ✅ 多個請求同時 401 時，只跑一次 refresh，其他排隊等結果
-// 可覆蓋版 public/js/axios-auth.js
+﻿// ?臭誑???曉?鞊∪???axios-auth.js ????401?賜??仿暹??????潭嚗?// ?祇??嚗?register??verify-register-email嚗??唳???401 API
+// ??典停??/api/refresh
+// refresh 銋仃??// ?敺撥?嗅???/login
+// ????餃銋????銝???// 銝??亦策雿?隞??航??? public/js/axios-auth.js嚗?鈭嗾隞嗡?嚗?// ???芣???閬?亦? API????閰?refresh
+// ??撠?? API ??401嚗? refresh??頝?login
+// ??撠?/api/me ?車?靘炎?交?衣?乓? API嚗?01 閬甇?虜嚗? refresh
+// ???踹? refresh ?⊿?餈游?
+// ??憭?瘙???401 ???芾?銝甈?refresh嚗隞???蝯?
+// ?航??? public/js/axios-auth.js
 
 (function () {
-  // ===== 可依需求調整 =====
+  // ===== ?臭??瘙矽??=====
 
-  // 這些頁面本來就允許未登入瀏覽；在這些頁面上，401 不應自動 refresh / 不應強制跳 login
+  // ????砌?撠勗?閮望?餃?汗嚗???銝?401 銝??芸? refresh / 銝?撘瑕頝?login
   const PUBLIC_PAGES = new Set([
     '/login',
     '/register',
     '/verify-register-email',
     '/verify-email',
-    '/index',
-    '/'
+        '/'
   ]);
 
-  // 這些 API 的 401 視為「正常可能發生」，不要觸發 refresh
-  // 例如：
-  // - /api/me：header.js 用來判斷是否登入，未登入回 401 很正常
-  // - /api/security/config：若你之後又改成某些版本，這裡也保護一下
-  const PUBLIC_OR_OPTIONAL_AUTH_APIS = [
+  // ?? API ??401 閬?迤撣詨?賜??銝?閫貊 refresh
+  // 靘?嚗?  // - /api/me嚗eader.js ?其??斗?臬?餃嚗?餃??401 敺迤撣?  // - /api/security/config嚗雿?敺??寞????嚗ㄐ銋?霅瑚?銝?  const PUBLIC_OR_OPTIONAL_AUTH_APIS = [
     '/api/me',
     '/api/security/config',
     '/api/public/security/config'
   ];
 
-  // refresh / logout 自己不要被攔截器拿來再 refresh，避免迴圈
-  const NEVER_REFRESH_APIS = [
+  // refresh / logout ?芸楛銝?鋡急??芸?蹂???refresh嚗?艘??  const NEVER_REFRESH_APIS = [
     '/api/refresh',
     '/api/logout'
   ];
@@ -62,22 +53,22 @@
     const url = error?.config?.url || '';
     const path = getCurrentPath();
 
-    // 1) 這些 API 永遠不 refresh
+    // 1) ?? API 瘞賊?銝?refresh
     if (matchApi(url, NEVER_REFRESH_APIS)) return true;
 
-    // 2) 公開頁面上，對某些公開/可選登入 API 的 401，不 refresh
+    // 2) ?祇??銝?撠?鈭???舫?餃 API ??401嚗? refresh
     if (isPublicPage(path) && matchApi(url, PUBLIC_OR_OPTIONAL_AUTH_APIS)) return true;
 
-    // 3) 對非 /api/ 開頭的請求，不做 auth refresh
+    // 3) 撠? /api/ ???瘙?銝? auth refresh
     if (!url.startsWith('/api/')) return true;
 
     return false;
   }
 
-  // ===== axios 設定 =====
+  // ===== axios 閮剖? =====
   axios.defaults.withCredentials = true;
 
-  // ===== refresh 協調（避免多請求同時 refresh）=====
+  // ===== refresh ?矽嚗??隢??? refresh嚗?====
   let isRefreshing = false;
   let refreshWaiters = [];
 
@@ -98,8 +89,7 @@
   async function doRefresh() {
     return axios.post('/api/refresh', {}, {
       withCredentials: true,
-      __skipAuthRefresh: true // 自訂旗標：避免自己再進攔截流程
-    });
+      __skipAuthRefresh: true // ?芾???嚗?撌勗??脫??芣?蝔?    });
   }
 
   axios.interceptors.response.use(
@@ -110,32 +100,31 @@
       const originalRequest = error?.config || {};
       const status = error?.response?.status;
 
-      // 沒有 response（例如網路斷線、timeout）直接丟回去
+      // 瘝? response嚗?憒雯頝舀蝺imeout嚗?乩??
       if (!error.response) {
         return Promise.reject(error);
       }
 
-      // 只處理 401
+      // ?芾???401
       if (status !== 401) {
         return Promise.reject(error);
       }
 
-      // 被標記跳過 auth refresh 的請求，不處理
-      if (originalRequest.__skipAuthRefresh) {
+      // 鋡急?閮歲??auth refresh ??瘙?銝???      if (originalRequest.__skipAuthRefresh) {
         return Promise.reject(error);
       }
 
-      // 某些 API / 公開頁 401 是正常行為，不 refresh、不導頁
+      // ?? API / ?祇???401 ?舀迤撣貉??綽?銝?refresh??撠?
       if (shouldSkipAuthHandling(error)) {
         return Promise.reject(error);
       }
 
-      // 已經重試過一次，避免無限迴圈
+      // 撌脩??岫??甈∴??踹??⊿?餈游?
       if (originalRequest.__isRetryRequest) {
         return Promise.reject(error);
       }
 
-      // ===== 單飛 refresh：如果已有 refresh 在跑，其他請求排隊 =====
+      // ===== ?桅? refresh嚗??歇??refresh ?刻?嚗隞?瘙???=====
       if (isRefreshing) {
         return new Promise((resolve, reject) => {
           addRefreshWaiter(
@@ -166,7 +155,7 @@
         isRefreshing = false;
         rejectRefreshWaiters(refreshErr);
 
-        // ✅ 只有「非公開頁」才強制回 login
+        // ???芣????祇???撘瑕??login
         const currentPath = getCurrentPath();
         if (!isPublicPage(currentPath)) {
           const next = encodeURIComponent(window.location.pathname + window.location.search);

@@ -4,11 +4,17 @@ const mysql = require('mysql2/promise');
 const config = {
   host: process.env.DB_HOST || '127.0.0.1',
   port: Number(process.env.DB_PORT || 3306),
+<<<<<<< HEAD
   user: process.env.DB_USER || 'root',
   password: process.env.DB_PASS || '',
   database: process.env.DB_NAME || 'shop',
 
   // 企業級建議設定
+=======
+  user: process.env.DB_USER || "root",
+  password: process.env.DB_PASS || "",
+  database: process.env.DB_NAME || "game_qa_platform",
+>>>>>>> 4e5e5da (game_quotation_first)
   waitForConnections: true,
   connectionLimit: Number(process.env.DB_POOL_SIZE || 10),
   queueLimit: 0,
@@ -81,6 +87,7 @@ module.exports = {
   withTransaction
 };
 
+<<<<<<< HEAD
 
 // const mysql = require('mysql');
 
@@ -149,3 +156,5 @@ module.exports = {
 
 
 // // module.exports = { pool, query };
+=======
+>>>>>>> 4e5e5da (game_quotation_first)

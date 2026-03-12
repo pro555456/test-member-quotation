@@ -1,0 +1,147 @@
+﻿<div class="container-fluid">
+  <div class="platform-shell p-4">
+    <div class="d-flex flex-column flex-lg-row justify-content-between align-items-lg-center mb-4">
+      <div>
+        <div class="section-kicker">Quotations</div>
+        <div class="section-title">遊戲檢測報價單管理</div>
+      </div>
+      <div class="mt-3 mt-lg-0">
+        <a class="btn btn-danger" href="/quotes/new">新增報價單</a>
+      </div>
+    </div>
+
+    <div id="msgBox" class="alert d-none"></div>
+
+    <div class="data-card mb-4">
+      <div class="toolbar-grid">
+        <div>
+          <label for="filterKeyword">關鍵字</label>
+          <input id="filterKeyword" class="form-control" placeholder="客戶、遊戲、訂單編號">
+        </div>
+        <div>
+          <label for="filterMonth">月份</label>
+          <input id="filterMonth" class="form-control" placeholder="2025-02">
+        </div>
+        <div>
+          <label for="filterStatus">案件狀態</label>
+          <select id="filterStatus" class="form-control">
+            <option value="">全部</option>
+            <option>DRAFT</option>
+            <option>QUOTED</option>
+            <option>SIGNED</option>
+            <option>IN_PROGRESS</option>
+            <option>COMPLETED</option>
+            <option>CLOSED</option>
+          </select>
+        </div>
+        <div>
+          <label for="filterBilling">請款狀態</label>
+          <select id="filterBilling" class="form-control">
+            <option value="">全部</option>
+            <option>UNBILLED</option>
+            <option>BILLED</option>
+            <option>SETTLED</option>
+          </select>
+        </div>
+        <div>
+          <label for="filterPlatform">平台</label>
+          <select id="filterPlatform" class="form-control">
+            <option value="">全部</option>
+            <option value="ios">iOS</option>
+            <option value="android">Android</option>
+            <option value="web">Web</option>
+            <option value="other">Other</option>
+          </select>
+        </div>
+      </div>
+      <div class="mt-3">
+        <button class="btn btn-primary mr-2" onclick="loadQuotes()">查詢</button>
+        <button class="btn btn-outline-secondary" onclick="resetFilters()">清除</button>
+      </div>
+    </div>
+
+    <div class="data-card">
+      <div class="table-responsive">
+        <table class="table table-hover">
+          <thead>
+            <tr>
+              <th>報價日期</th>
+              <th>客戶</th>
+              <th>遊戲/內容</th>
+              <th>平台</th>
+              <th>案件狀態</th>
+              <th>請款狀態</th>
+              <th>未稅總額</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody id="quoteTableBody"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  function escapeHtml(value) {
+    return String(value ?? '').replace(/[&<>"']/g, (char) => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;' }[char]));
+  }
+
+  function formatMoney(value) {
+    return new Intl.NumberFormat('zh-TW', { style: 'currency', currency: 'TWD', maximumFractionDigits: 0 }).format(Number(value || 0));
+  }
+
+  function getPlatforms(platforms) {
+    return Object.entries(platforms || {}).filter(([, enabled]) => enabled).map(([name]) => name.toUpperCase()).join(', ') || '—';
+  }
+
+  function showMsg(message, type = 'danger') {
+    const box = document.getElementById('msgBox');
+    box.className = `alert alert-${type}`;
+    box.textContent = message;
+  }
+
+  function resetFilters() {
+    document.getElementById('filterKeyword').value = '';
+    document.getElementById('filterMonth').value = '';
+    document.getElementById('filterStatus').value = '';
+    document.getElementById('filterBilling').value = '';
+    document.getElementById('filterPlatform').value = '';
+    loadQuotes();
+  }
+
+  async function loadQuotes() {
+    const params = {
+      q: document.getElementById('filterKeyword').value || undefined,
+      month: document.getElementById('filterMonth').value || undefined,
+      caseStatus: document.getElementById('filterStatus').value || undefined,
+      billingStatus: document.getElementById('filterBilling').value || undefined,
+      platform: document.getElementById('filterPlatform').value || undefined,
+    };
+
+    try {
+      const response = await axios.get('/api/quotes', { params });
+      const quotes = response.data.quotes || [];
+      const body = document.getElementById('quoteTableBody');
+      body.innerHTML = quotes.length ? quotes.map((quote) => `
+        <tr>
+          <td>${escapeHtml(quote.quoteDate)}</td>
+          <td>
+            <div class="font-weight-bold">${escapeHtml(quote.customerName)}</div>
+            <div class="form-note">${escapeHtml(quote.customerOrderNo || quote.internalOrderNo || '—')}</div>
+          </td>
+          <td>${escapeHtml(quote.gameTitle)}</td>
+          <td><span class="platform-pill">${escapeHtml(getPlatforms(quote.platforms))}</span></td>
+          <td><span class="status-pill">${escapeHtml(quote.caseStatus)}</span></td>
+          <td><span class="status-pill ${quote.billingStatus === 'SETTLED' ? 'is-success' : ''}">${escapeHtml(quote.billingStatus)}</span></td>
+          <td>${escapeHtml(formatMoney(quote.totalUntaxed))}</td>
+          <td class="text-right"><a class="btn btn-sm btn-outline-secondary" href="/quotes/${quote.id}">查看 / 編輯</a></td>
+        </tr>
+      `).join('') : '<tr><td colspan="8" class="empty-state">目前沒有報價資料</td></tr>';
+    } catch (error) {
+      showMsg(error?.response?.data?.message || '讀取報價資料失敗');
+    }
+  }
+
+  document.addEventListener('DOMContentLoaded', loadQuotes);
+</script>

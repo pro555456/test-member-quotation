@@ -1,0 +1,165 @@
+﻿<div class="container-fluid">
+  <div class="platform-shell p-4">
+    <div class="d-flex flex-column flex-lg-row justify-content-between align-items-lg-center mb-4">
+      <div>
+        <div class="section-kicker">Case Tracking</div>
+        <div class="section-title">案件進度與請款狀態</div>
+      </div>
+      <div class="mt-3 mt-lg-0">
+        <a class="btn btn-outline-secondary mr-2" href="/quotes">查看報價列表</a>
+        <a class="btn btn-danger" href="/quotes/new">新增報價</a>
+      </div>
+    </div>
+
+    <div id="msgBox" class="alert d-none"></div>
+
+    <div class="data-card mb-4">
+      <div class="toolbar-grid">
+        <div>
+          <label for="caseKeyword">關鍵字</label>
+          <input id="caseKeyword" class="form-control" placeholder="客戶 / 遊戲 / 訂單編號">
+        </div>
+        <div>
+          <label for="caseStatusFilter">案件狀態</label>
+          <select id="caseStatusFilter" class="form-control">
+            <option value="">全部</option>
+            <option>QUOTED</option>
+            <option>SIGNED</option>
+            <option>IN_PROGRESS</option>
+            <option>COMPLETED</option>
+            <option>CLOSED</option>
+          </select>
+        </div>
+        <div>
+          <label for="caseBillingFilter">請款狀態</label>
+          <select id="caseBillingFilter" class="form-control">
+            <option value="">全部</option>
+            <option>UNBILLED</option>
+            <option>BILLED</option>
+            <option>SETTLED</option>
+          </select>
+        </div>
+        <div>
+          <label for="casePlatformFilter">平台</label>
+          <select id="casePlatformFilter" class="form-control">
+            <option value="">全部</option>
+            <option value="ios">iOS</option>
+            <option value="android">Android</option>
+            <option value="web">Web</option>
+            <option value="other">Other</option>
+          </select>
+        </div>
+      </div>
+      <div class="mt-3">
+        <button class="btn btn-primary mr-2" onclick="loadCases()">查詢</button>
+        <button class="btn btn-outline-secondary" onclick="resetFilters()">清除</button>
+      </div>
+    </div>
+
+    <div class="data-card">
+      <div class="table-responsive">
+        <table class="table table-hover">
+          <thead>
+            <tr>
+              <th>客戶 / 遊戲</th>
+              <th>平台</th>
+              <th>回簽 / 結案</th>
+              <th>案件狀態</th>
+              <th>請款狀態</th>
+              <th>天數</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody id="caseTableBody"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  function escapeHtml(value) {
+    return String(value ?? '').replace(/[&<>"']/g, (char) => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;' }[char]));
+  }
+
+  function getPlatforms(platforms) {
+    return Object.entries(platforms || {}).filter(([, enabled]) => enabled).map(([name]) => name.toUpperCase()).join(', ') || '—';
+  }
+
+  function showMsg(message, type = 'danger') {
+    const box = document.getElementById('msgBox');
+    box.className = `alert alert-${type}`;
+    box.textContent = message;
+  }
+
+  function resetFilters() {
+    document.getElementById('caseKeyword').value = '';
+    document.getElementById('caseStatusFilter').value = '';
+    document.getElementById('caseBillingFilter').value = '';
+    document.getElementById('casePlatformFilter').value = '';
+    loadCases();
+  }
+
+  async function updateCaseStatus(id) {
+    const caseStatus = document.getElementById(`caseStatus-${id}`).value;
+    const billingStatus = document.getElementById(`billingStatus-${id}`).value;
+    try {
+      await axios.patch(`/api/cases/${id}/status`, { caseStatus, billingStatus });
+      showMsg('案件狀態已更新', 'success');
+      await loadCases();
+    } catch (error) {
+      showMsg(error?.response?.data?.message || '更新案件狀態失敗');
+    }
+  }
+
+  async function loadCases() {
+    const params = {
+      q: document.getElementById('caseKeyword').value || undefined,
+      caseStatus: document.getElementById('caseStatusFilter').value || undefined,
+      billingStatus: document.getElementById('caseBillingFilter').value || undefined,
+      platform: document.getElementById('casePlatformFilter').value || undefined,
+    };
+
+    try {
+      const response = await axios.get('/api/cases', { params });
+      const cases = response.data.cases || [];
+      const body = document.getElementById('caseTableBody');
+      body.innerHTML = cases.length ? cases.map((item) => `
+        <tr>
+          <td>
+            <div class="font-weight-bold">${escapeHtml(item.customerName)}</div>
+            <div>${escapeHtml(item.gameTitle)}</div>
+            <div class="form-note">${escapeHtml(item.customerOrderNo || item.internalOrderNo || '—')}</div>
+          </td>
+          <td><span class="platform-pill">${escapeHtml(getPlatforms(item.platforms))}</span></td>
+          <td>
+            <div>回簽：${escapeHtml(item.signedAt || '—')}</div>
+            <div>結案：${escapeHtml(item.closedAt || '—')}</div>
+          </td>
+          <td>
+            <select id="caseStatus-${item.id}" class="form-control form-control-sm mb-2">
+              ${['QUOTED','SIGNED','IN_PROGRESS','COMPLETED','CLOSED'].map((status) => `<option ${item.caseStatus === status ? 'selected' : ''}>${status}</option>`).join('')}
+            </select>
+          </td>
+          <td>
+            <select id="billingStatus-${item.id}" class="form-control form-control-sm mb-2">
+              ${['UNBILLED','BILLED','SETTLED'].map((status) => `<option ${item.billingStatus === status ? 'selected' : ''}>${status}</option>`).join('')}
+            </select>
+          </td>
+          <td>
+            <div>回簽 ${escapeHtml(item.daysToSign ?? '—')} 天</div>
+            <div>開案 ${escapeHtml(item.daysOpen ?? '—')} 天</div>
+          </td>
+          <td class="text-right">
+            <button class="btn btn-sm btn-primary mb-2" onclick="updateCaseStatus(${item.id})">更新</button>
+            <a class="btn btn-sm btn-outline-secondary" href="/quotes/${item.id}">詳情</a>
+          </td>
+        </tr>
+      `).join('') : '<tr><td colspan="7" class="empty-state">目前沒有案件資料</td></tr>';
+    } catch (error) {
+      showMsg(error?.response?.data?.message || '讀取案件資料失敗');
+    }
+  }
+
+  document.addEventListener('DOMContentLoaded', loadCases);
+</script>

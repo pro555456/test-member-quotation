@@ -1,0 +1,159 @@
+﻿<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title><%= title %></title>
+  <style>
+    body { font-family: "Microsoft JhengHei", Arial, sans-serif; color: #17212b; margin: 0; padding: 24px; background: #f8fbfc; }
+    .report-shell { max-width: 1120px; margin: 0 auto; background: #fff; border-radius: 18px; padding: 24px 28px; box-shadow: 0 10px 24px rgba(23, 33, 43, 0.08); }
+    .hero { display: flex; justify-content: space-between; align-items: flex-end; gap: 16px; margin-bottom: 24px; }
+    .hero h1 { margin: 0 0 8px; font-size: 28px; }
+    .muted { color: #5f6f82; font-size: 14px; }
+    .summary-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 24px; }
+    .card { border: 1px solid #d9e5e8; border-radius: 14px; padding: 14px; background: #fdfefe; }
+    .card .label { color: #5f6f82; font-size: 12px; text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 6px; }
+    .card .value { font-size: 24px; font-weight: 700; }
+    h2 { margin: 28px 0 12px; font-size: 20px; }
+    table { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
+    th, td { border: 1px solid #d9e5e8; padding: 10px 12px; text-align: left; vertical-align: top; font-size: 14px; }
+    th { background: #edf5f6; color: #35535b; }
+    .actions { display: flex; gap: 12px; margin-bottom: 20px; }
+    .actions button { border: none; border-radius: 999px; padding: 10px 16px; background: #0d5c63; color: #fff; cursor: pointer; }
+    .cross-chip { display: inline-block; margin: 2px 0; }
+    @media print {
+      body { background: #fff; padding: 0; }
+      .report-shell { box-shadow: none; border-radius: 0; padding: 0; }
+      .actions { display: none; }
+    }
+  </style>
+</head>
+<body>
+  <% const summary = analytics.summary || {}; const cross = analytics.customerPlatformCross || { platforms: [], rows: [] }; %>
+  <div class="report-shell">
+    <div class="actions">
+      <button onclick="window.print()">列印 / 另存 PDF</button>
+      <button onclick="window.close()">關閉</button>
+    </div>
+
+    <div class="hero">
+      <div>
+        <div class="muted">Administrator Analytics Report</div>
+        <h1>管理分析列印版</h1>
+        <div class="muted">分析區間：<%= analytics.periodLabel %></div>
+      </div>
+      <div class="muted">產出時間：<%= new Date().toLocaleString('zh-TW', { hour12: false }) %></div>
+    </div>
+
+    <div class="summary-grid">
+      <div class="card"><div class="label">當期案件數</div><div class="value"><%= summary.periodCaseCount %></div></div>
+      <div class="card"><div class="label">當期未稅營收</div><div class="value"><%= Number(summary.periodUntaxedTotal || 0).toLocaleString('zh-TW') %></div></div>
+      <div class="card"><div class="label">平均結案天數</div><div class="value"><%= summary.periodAvgCloseDays ?? '—' %></div></div>
+      <div class="card"><div class="label">未結案案件</div><div class="value"><%= summary.openCaseCount %></div></div>
+      <div class="card"><div class="label">未收款客戶</div><div class="value"><%= summary.unpaidCustomerCount %></div></div>
+      <div class="card"><div class="label">未收款金額</div><div class="value"><%= Number(summary.unpaidAmount || 0).toLocaleString('zh-TW') %></div></div>
+    </div>
+
+    <h2>趨勢資料</h2>
+    <table>
+      <thead><tr><th>區間</th><th>案件數</th><th>未稅營收</th><th>已結案</th><th>未收款金額</th></tr></thead>
+      <tbody>
+        <% if ((analytics.trend || []).length) { %>
+          <% analytics.trend.forEach((row) => { %>
+            <tr>
+              <td><%= row.label %></td>
+              <td><%= row.caseCount %></td>
+              <td><%= Number(row.untaxedTotal || 0).toLocaleString('zh-TW') %></td>
+              <td><%= row.closedCount %></td>
+              <td><%= Number(row.unsettledAmount || 0).toLocaleString('zh-TW') %></td>
+            </tr>
+          <% }) %>
+        <% } else { %>
+          <tr><td colspan="5">目前沒有資料</td></tr>
+        <% } %>
+      </tbody>
+    </table>
+
+    <h2>客戶 / 平台交叉分析</h2>
+    <table>
+      <thead>
+        <tr>
+          <th>客戶</th>
+          <th>總案件</th>
+          <th>總金額</th>
+          <% cross.platforms.forEach((platform) => { %>
+            <th><%= platform.label %></th>
+          <% }) %>
+        </tr>
+      </thead>
+      <tbody>
+        <% if ((cross.rows || []).length) { %>
+          <% cross.rows.forEach((row) => { %>
+            <tr>
+              <td><%= row.customerName %></td>
+              <td><%= row.totalCaseCount %></td>
+              <td><%= Number(row.totalAmount || 0).toLocaleString('zh-TW') %></td>
+              <% row.platforms.forEach((platform) => { %>
+                <td>
+                  <div class="cross-chip"><%= platform.caseCount %> 件</div><br>
+                  <div class="cross-chip"><%= Number(platform.amount || 0).toLocaleString('zh-TW') %></div>
+                </td>
+              <% }) %>
+            </tr>
+          <% }) %>
+        <% } else { %>
+          <tr><td colspan="7">目前沒有資料</td></tr>
+        <% } %>
+      </tbody>
+    </table>
+
+    <h2>當期客戶排行</h2>
+    <table>
+      <thead><tr><th>客戶</th><th>案件數</th><th>未稅營收</th><th>未收款金額</th></tr></thead>
+      <tbody>
+        <% if ((analytics.topCustomers || []).length) { %>
+          <% analytics.topCustomers.forEach((row) => { %>
+            <tr>
+              <td><%= row.customerName %></td>
+              <td><%= row.caseCount %></td>
+              <td><%= Number(row.untaxedTotal || 0).toLocaleString('zh-TW') %></td>
+              <td><%= Number(row.unpaidAmount || 0).toLocaleString('zh-TW') %></td>
+            </tr>
+          <% }) %>
+        <% } else { %>
+          <tr><td colspan="4">目前沒有資料</td></tr>
+        <% } %>
+      </tbody>
+    </table>
+
+    <h2>未結案 / 未收款重點客戶</h2>
+    <table>
+      <thead><tr><th>客戶</th><th>未結案</th><th>未收款</th><th>未結案金額</th><th>未收款金額</th><th>最久未結案天數</th></tr></thead>
+      <tbody>
+        <% if ((analytics.outstandingCustomers || []).length) { %>
+          <% analytics.outstandingCustomers.forEach((row) => { %>
+            <tr>
+              <td><%= row.customerName %></td>
+              <td><%= row.openCaseCount %></td>
+              <td><%= row.unpaidCaseCount %></td>
+              <td><%= Number(row.openCaseAmount || 0).toLocaleString('zh-TW') %></td>
+              <td><%= Number(row.unpaidAmount || 0).toLocaleString('zh-TW') %></td>
+              <td><%= row.oldestOpenDays %></td>
+            </tr>
+          <% }) %>
+        <% } else { %>
+          <tr><td colspan="6">目前沒有資料</td></tr>
+        <% } %>
+      </tbody>
+    </table>
+  </div>
+
+  <% if (autoPrint) { %>
+    <script>
+      window.addEventListener('load', () => {
+        setTimeout(() => window.print(), 250);
+      });
+    </script>
+  <% } %>
+</body>
+</html>

@@ -1,19 +1,18 @@
-<!-- 5) views/verify_email.ejs -->
+﻿<!-- 5) views/verify_email.ejs -->
  <%- include('./basic/auth_card.ejs', {
   authWrapClass: '',
-  titleText: 'Email 驗證',
-  subtitleText: '正在驗證您的新 Email，請稍候…',
+  titleText: 'Email 撽?',
+  subtitleText: '甇?撽??函???Email嚗?蝔?,
   body: `
-    <div id="subtitle" class="small-muted mb-3">驗證中，請稍候…</div>
+    <div id="subtitle" class="small-muted mb-3">撽?銝哨?隢???/div>
 
     <div class="text-center mt-3">
-      <a class="btn btn-outline-secondary" href="/profile">回我的資料</a>
-      <a class="btn btn-outline-secondary ml-2" href="/index">回首頁</a>
+      <a class="btn btn-outline-secondary" href="/profile">??????/a>
+      <a class="btn btn-outline-secondary ml-2" href="/dashboard">????/a>
     </div>
 
     <div class="small-muted mt-3 text-center">
-      驗證成功後會自動跳回「我的資料」。
-    </div>
+      撽???敺??芸?頝喳???????    </div>
   `
 }) %>
 
@@ -42,7 +41,7 @@
     if (el) el.innerText = text || '';
   }
 
-  function getApiErrorMessage(err, fallback='驗證失敗') {
+  function getApiErrorMessage(err, fallback='撽?憭望?') {
     const data = err?.response?.data;
     return data?.message || err?.message || fallback;
   }
@@ -52,19 +51,19 @@
     const token = params.get('token') || '';
 
     if (!token) {
-      setSubtitle('缺少 token，請確認連結是否完整');
-      showError('缺少 token，請確認連結是否完整');
+      setSubtitle('蝻箏? token嚗?蝣箄?????臬摰');
+      showError('蝻箏? token嚗?蝣箄?????臬摰');
       return;
     }
 
     try {
-      setSubtitle('驗證中，請稍候…');
-      showInfo('驗證中…');
+      setSubtitle('撽?銝哨?隢???);
+      showInfo('撽?銝凌?);
 
       await axios.get('/api/me/email/verify', { params: { token } });
 
-      setSubtitle('驗證成功，正在跳回「我的資料」…');
-      showSuccess('驗證成功！Email 已更新');
+      setSubtitle('撽???嚗迤?刻歲??????);
+      showSuccess('撽???嚗mail 撌脫??);
 
       setTimeout(() => {
         window.location.href = '/profile?verified=1';
@@ -72,8 +71,8 @@
 
     } catch (e) {
       console.error(e);
-      setSubtitle('驗證失敗');
-      showError(getApiErrorMessage(e, '驗證失敗或連結已失效'));
+      setSubtitle('撽?憭望?');
+      showError(getApiErrorMessage(e, '撽?憭望????撌脣仃??));
     }
   }
 

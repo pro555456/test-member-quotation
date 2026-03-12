@@ -1,63 +1,37 @@
-<!-- 下面直接給你 可覆蓋版 views/login.ejs，我已經把：
-✅ 忘記密碼 連結補上
-✅ 位置與 auth_card 風格一致
-✅ 與 register.ejs、verify_* 頁面保持同一套視覺
-✅ 保留你目前的登入邏輯與 ?verified=1 提示 -->
-
-<!-- views/login.ejs 可覆蓋整檔版 -->
-<%- include('./basic/auth_card.ejs', {
+﻿<%- include('./basic/auth_card.ejs', {
   authWrapClass: 'auth-wrap-sm',
-  titleText: '會員登入',
-  subtitleText: '請輸入帳號與密碼登入 TMC SHOP',
+  titleText: '遊戲檢測報價平台',
+  subtitleText: '登入後即可查看報價單、案件追蹤與營運儀表板。',
   body: `
     <div class="form-group">
       <label for="account">帳號</label>
-      <input
-        id="account"
-        class="form-control"
-        name="account"
-        placeholder="請輸入帳號"
-        autocomplete="username"
-      >
+      <input id="account" class="form-control" name="account" placeholder="請輸入帳號" autocomplete="username">
     </div>
 
     <div class="form-group">
       <label for="password">密碼</label>
-      <input
-        id="password"
-        class="form-control"
-        name="password"
-        type="password"
-        placeholder="請輸入密碼"
-        autocomplete="current-password"
-      >
+      <input id="password" class="form-control" name="password" type="password" placeholder="請輸入密碼" autocomplete="current-password">
     </div>
 
     <div class="d-flex justify-content-between align-items-center mb-3">
-      <div>
-        <span class="small-muted">尚未加入會員？</span>
-        <a href="/register" class="ml-1">立即註冊</a>
-      </div>
-      <div>
-        <a href="/forgot-password">忘記密碼？</a>
-      </div>
+      <div class="small-muted">內部人員登入入口</div>
+      <div><a href="/forgot-password">忘記密碼</a></div>
     </div>
 
     <div class="text-center">
       <button id="btnLogin" type="button" onclick="login()" class="btn btn-danger mr-2">登入</button>
-      <button type="button" class="btn btn-outline-secondary" onclick="resetForm()">重填</button>
+      <button type="button" class="btn btn-outline-secondary" onclick="resetForm()">清除</button>
     </div>
   `
 }) %>
 
 <script>
-  function showMsg(msg, type='danger', autoHideMs=0) {
+  function showMsg(msg, type = 'danger', autoHideMs = 0) {
     const box = document.getElementById('msgBox');
     box.style.display = 'block';
     box.classList.remove('alert-danger', 'alert-success', 'alert-warning', 'alert-info');
     box.classList.add('alert-' + type);
     box.innerText = msg || '';
-    box.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
 
     if (autoHideMs > 0) {
       setTimeout(() => {
@@ -66,9 +40,6 @@
       }, autoHideMs);
     }
   }
-
-  function showError(msg) { showMsg(msg, 'danger'); }
-  function showSuccess(msg) { showMsg(msg, 'success', 800); }
 
   function clearMsg() {
     const box = document.getElementById('msgBox');
@@ -85,13 +56,12 @@
   function checkVerifiedFlag() {
     const params = new URLSearchParams(window.location.search);
     if (params.get('verified') === '1') {
-      showSuccess('Email 已驗證，請登入。');
-
+      showMsg('Email 驗證完成，請重新登入。', 'success', 1200);
       setTimeout(() => {
         const url = new URL(window.location.href);
         url.searchParams.delete('verified');
         window.history.replaceState({}, '', url.pathname);
-      }, 900);
+      }, 1300);
     }
   }
 
@@ -105,28 +75,19 @@
       const password = document.getElementById('password').value || '';
 
       if (!account) {
-        showError('請輸入帳號');
+        showMsg('請輸入帳號');
         return;
       }
       if (!password) {
-        showError('請輸入密碼');
+        showMsg('請輸入密碼');
         return;
       }
 
       await axios.post('/api/login', { account, password });
-
-      const me = await axios.get('/api/me');
-      const user = me?.data?.user || null;
-
-      if (user && user.type === 'A') {
-        window.location.href = '/admin';
-      } else {
-        window.location.href = '/index';
-      }
+      window.location.href = '/dashboard';
     } catch (err) {
-      console.error('[login error]', err);
-      const msg = err?.response?.data?.message || '登入失敗，請重新輸入正確的帳號密碼！';
-      showError(msg);
+      const msg = err?.response?.data?.message || '登入失敗，請檢查帳號密碼。';
+      showMsg(msg);
     } finally {
       btn.disabled = false;
     }
@@ -146,11 +107,3 @@
     checkVerifiedFlag();
   });
 </script>
-
-<!-- 這版調整了什麼
-原本你只有：
-立即註冊
-現在改成同一排：
-左邊：尚未加入會員？立即註冊
-右邊：忘記密碼？
-這個排法比較像正式站的 auth UI，也跟你現在 auth_card 風格一致。 -->

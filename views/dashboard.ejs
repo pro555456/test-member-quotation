@@ -1,0 +1,245 @@
+﻿<div class="container-fluid">
+  <div class="hero-panel mb-4">
+    <div class="row align-items-end">
+      <div class="col-lg-8">
+        <div class="section-kicker mb-2">Game QA Operations</div>
+        <h1 class="mb-3">遊戲檢測報價與案件營運儀表板</h1>
+        <p class="mb-0">集中掌握案件量、營收趨勢、平台分布與客戶排行，首頁直接作為內部營運入口。</p>
+      </div>
+      <div class="col-lg-4 mt-3 mt-lg-0 text-lg-right">
+        <a class="btn btn-light mr-2" href="/quotes/new">新增報價</a>
+        <a class="btn btn-outline-light" href="/cases">前往案件追蹤</a>
+      </div>
+    </div>
+  </div>
+
+  <div id="msgBox" class="alert d-none"></div>
+
+  <div class="row" id="summaryCards"></div>
+
+  <div class="row mt-4">
+    <div class="col-xl-7 mb-4">
+      <div class="data-card h-100">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+          <div>
+            <div class="section-kicker">Monthly Trend</div>
+            <div class="section-title">近 12 個月營收與案件量</div>
+          </div>
+          <a href="/quotes" class="btn btn-outline-secondary btn-sm">查看報價單</a>
+        </div>
+        <div class="table-responsive">
+          <table class="table table-hover">
+            <thead>
+              <tr>
+                <th>月份</th>
+                <th>案件數</th>
+                <th>未稅總額</th>
+              </tr>
+            </thead>
+            <tbody id="monthlyTrendBody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+    <div class="col-xl-5 mb-4">
+      <div class="data-card h-100">
+        <div class="section-kicker">Platform Mix</div>
+        <div class="section-title mb-3">平台分布</div>
+        <div id="platformMix" class="toolbar-grid"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="row">
+    <div class="col-xl-6 mb-4">
+      <div class="data-card h-100">
+        <div class="section-kicker">Top Customers</div>
+        <div class="section-title mb-3">客戶排行</div>
+        <div class="table-responsive">
+          <table class="table table-hover">
+            <thead>
+              <tr>
+                <th>客戶</th>
+                <th>案件數</th>
+                <th>未稅總額</th>
+              </tr>
+            </thead>
+            <tbody id="topCustomersBody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+    <div class="col-xl-6 mb-4">
+      <div class="data-card h-100">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+          <div>
+            <div class="section-kicker">Import</div>
+            <div class="section-title">Excel 匯入工具</div>
+          </div>
+          <span class="form-note">需要人員管理權限</span>
+        </div>
+        <div class="form-group">
+          <label for="importFile">Excel 檔案</label>
+          <input id="importFile" type="file" class="form-control-file" accept=".xlsx,.xlsm,.xltx,.xltm">
+          <div class="form-note mt-2">建議直接選擇 Excel 檔，目前支援 .xlsx、.xlsm、.xltx、.xltm。若你熟悉伺服器檔案路徑，也可以使用下方備援欄位。</div>
+        </div>
+        <div class="form-group">
+          <label for="importPath">備援路徑</label>
+          <input id="importPath" class="form-control" placeholder="可留空，例如 C:\\test\\quotes.xlsx">
+        </div>
+        <div class="form-group">
+          <label for="importSheet">工作表</label>
+          <input id="importSheet" class="form-control" value="2025">
+        </div>
+        <div class="d-flex flex-wrap align-items-center">
+          <button id="btnImportDryRun" class="btn btn-outline-secondary mr-2 mb-2" onclick="runImport(true)">Dry Run</button>
+          <button id="btnImportSubmit" class="btn btn-danger mr-3 mb-2" onclick="runImport(false)">正式匯入</button>
+          <span id="importHint" class="form-note mb-2"></span>
+        </div>
+        <pre id="importResult" class="mt-3 mb-0 small bg-light p-3 rounded" style="min-height: 160px;"></pre>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  function formatMoney(value) {
+    return new Intl.NumberFormat('zh-TW', { style: 'currency', currency: 'TWD', maximumFractionDigits: 0 }).format(Number(value || 0));
+  }
+
+  function showMsg(message, type = 'danger') {
+    const box = document.getElementById('msgBox');
+    box.className = `alert alert-${type}`;
+    box.textContent = message;
+  }
+
+  function escapeHtml(value) {
+    return String(value ?? '').replace(/[&<>"']/g, (char) => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;' }[char]));
+  }
+
+  function renderSummary(summary) {
+    const items = [
+      { label: '今日新增案件', value: summary.todayCaseCount, note: '當日 quoteDate 筆數' },
+      { label: '本月案件數', value: summary.monthCaseCount, note: '當月報價建立總數' },
+      { label: '本月未稅金額', value: formatMoney(summary.monthUntaxedTotal), note: `活躍客戶 ${summary.activeCustomerCount} 家` },
+      { label: '待回簽案件', value: summary.pendingSignCount, note: 'DRAFT / QUOTED' },
+      { label: '進行中案件', value: summary.inProgressCount, note: 'SIGNED / IN_PROGRESS / COMPLETED' },
+      { label: '平均結案天數', value: summary.avgCloseDays ?? '—', note: `逾期案件 ${summary.overdueCaseCount} 件` },
+    ];
+
+    document.getElementById('summaryCards').innerHTML = items.map((item) => `
+      <div class="col-xl-4 col-md-6 mb-4">
+        <div class="metric-card h-100">
+          <div class="metric-label mb-2">${escapeHtml(item.label)}</div>
+          <div class="metric-value mb-2">${escapeHtml(item.value)}</div>
+          <div class="metric-note">${escapeHtml(item.note)}</div>
+        </div>
+      </div>
+    `).join('');
+  }
+
+  function renderMonthly(rows) {
+    const body = document.getElementById('monthlyTrendBody');
+    body.innerHTML = rows.length ? rows.map((row) => `
+      <tr>
+        <td>${escapeHtml(row.month)}</td>
+        <td>${escapeHtml(row.caseCount)}</td>
+        <td>${escapeHtml(formatMoney(row.untaxedTotal))}</td>
+      </tr>
+    `).join('') : '<tr><td colspan="3" class="empty-state">目前沒有資料</td></tr>';
+  }
+
+  function renderPlatformMix(platformMix) {
+    const items = [
+      ['iOS', platformMix.ios],
+      ['Android', platformMix.android],
+      ['Web', platformMix.web],
+      ['Other', platformMix.other],
+    ];
+    document.getElementById('platformMix').innerHTML = items.map(([label, value]) => `
+      <div class="metric-card">
+        <div class="metric-label mb-2">${escapeHtml(label)}</div>
+        <div class="metric-value">${escapeHtml(value)}</div>
+      </div>
+    `).join('');
+  }
+
+  function renderTopCustomers(rows) {
+    const body = document.getElementById('topCustomersBody');
+    body.innerHTML = rows.length ? rows.map((row) => `
+      <tr>
+        <td>${escapeHtml(row.customerName)}</td>
+        <td>${escapeHtml(row.caseCount)}</td>
+        <td>${escapeHtml(formatMoney(row.untaxedTotal))}</td>
+      </tr>
+    `).join('') : '<tr><td colspan="3" class="empty-state">目前沒有資料</td></tr>';
+  }
+
+  function setImportBusy(isBusy, message = '') {
+    document.getElementById('btnImportDryRun').disabled = isBusy;
+    document.getElementById('btnImportSubmit').disabled = isBusy;
+    document.getElementById('importHint').textContent = message;
+  }
+
+  async function loadDashboard() {
+    try {
+      const [summaryRes, trendsRes] = await Promise.all([
+        axios.get('/api/dashboard/summary'),
+        axios.get('/api/dashboard/trends'),
+      ]);
+      const summary = summaryRes.data.summary || {};
+      const trends = trendsRes.data.trends || {};
+      renderSummary(summary);
+      renderMonthly(trends.monthly || []);
+      renderPlatformMix(trends.platformMix || {});
+      renderTopCustomers(trends.topCustomers || []);
+    } catch (error) {
+      showMsg(error?.response?.data?.message || '讀取儀表板資料失敗');
+    }
+  }
+
+  async function runImport(dryRun) {
+    const file = document.getElementById('importFile').files[0] || null;
+    const path = (document.getElementById('importPath').value || '').trim();
+    const sheetName = (document.getElementById('importSheet').value || '2025').trim();
+    const result = document.getElementById('importResult');
+
+    if (!file && !path) {
+      showMsg('請先選擇 Excel 檔案，或輸入備援路徑。', 'warning');
+      return;
+    }
+
+    const formData = new FormData();
+    if (file) formData.append('file', file);
+    if (path) formData.append('filePath', path);
+    formData.append('sheetName', sheetName);
+    formData.append('dryRun', dryRun ? 'true' : 'false');
+
+    setImportBusy(true, dryRun ? '執行 dry run 中…' : '匯入中…');
+
+    try {
+      const response = await axios.post('/api/import/quotes', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      });
+      result.textContent = JSON.stringify(response.data.result || {}, null, 2);
+      setImportBusy(false, dryRun ? 'Dry run 完成。' : '匯入完成。');
+      showMsg(dryRun ? 'Dry run 完成。' : 'Excel 匯入完成。', 'success');
+      if (!dryRun) {
+        await loadDashboard();
+      }
+    } catch (error) {
+      const message = error?.response?.data?.message || error.message || '匯入失敗';
+      result.textContent = JSON.stringify(error?.response?.data || { message }, null, 2);
+      setImportBusy(false, '');
+      showMsg(message, error?.response?.status === 401 ? 'warning' : 'danger');
+      if (error?.response?.status === 401) {
+        setTimeout(() => {
+          window.location.href = '/login';
+        }, 600);
+      }
+    }
+  }
+
+  document.addEventListener('DOMContentLoaded', loadDashboard);
+</script>
+

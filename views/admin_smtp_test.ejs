@@ -1,4 +1,4 @@
-<!-- ✅ 4) 可選：把它加進 SMTP 測試頁（admin_smtp_test.ejs）
+﻿<!-- ✅ 4) 可選：把它加進 SMTP 測試頁（admin_smtp_test.ejs）
 如果你要更方便，我可以順便幫你在 /admin/smtp-test 頁面加一個「檢查 SMTP 狀態」按鈕，直接把 dns/tcp 結果渲染出來（不用開 JSON）。
 你回我一句「要加到 smtp-test 頁」我就直接吐整份可覆蓋版 admin_smtp_test.ejs（含狀態區塊）。 -->
 <%
@@ -21,7 +21,7 @@ style = `
       <div class="small-muted mt-1">部署到 Ubuntu/VM 時可快速定位：env 缺漏、DNS、TCP 連線（不發信）。</div>
     </div>
     <div>
-      <a class="btn btn-outline-secondary btn-sm" href="/admin">回後臺</a>
+      <a class="btn btn-outline-secondary btn-sm" href="/dashboard">回後臺</a>
     </div>
   </div>
 
@@ -103,7 +103,7 @@ style = `
 
       <div class="form-group col-md-6">
         <label>主旨</label>
-        <input id="subject" class="form-control" value="SMTP 測試信 - TMC SHOP">
+        <input id="subject" class="form-control" value="SMTP 測試信 - Game QA Hub">
       </div>
     </div>
 
@@ -285,3 +285,4 @@ style = `
     checkSmtpStatus().catch(()=>{});
   });
 </script>
+
