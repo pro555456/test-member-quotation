@@ -72,6 +72,8 @@
               <th>案件狀態</th>
               <th>請款狀態</th>
               <th>未稅總額</th>
+              <th>營業稅</th>
+              <th>含稅總計</th>
               <th></th>
             </tr>
           </thead>
@@ -135,9 +137,11 @@
           <td><span class="status-pill">${escapeHtml(quote.caseStatus)}</span></td>
           <td><span class="status-pill ${quote.billingStatus === 'SETTLED' ? 'is-success' : ''}">${escapeHtml(quote.billingStatus)}</span></td>
           <td>${escapeHtml(formatMoney(quote.totalUntaxed))}</td>
+          <td>${escapeHtml(formatMoney(quote.taxAmount || 0))}</td>
+          <td class="font-weight-bold">${escapeHtml(formatMoney(quote.totalAmount || quote.totalUntaxed || 0))}</td>
           <td class="text-right"><a class="btn btn-sm btn-outline-secondary" href="/quotes/${quote.id}">查看 / 編輯</a></td>
         </tr>
-      `).join('') : '<tr><td colspan="8" class="empty-state">目前沒有報價資料</td></tr>';
+      `).join('') : '<tr><td colspan="10" class="empty-state">目前沒有報價資料</td></tr>';
     } catch (error) {
       showMsg(error?.response?.data?.message || '讀取報價資料失敗');
     }

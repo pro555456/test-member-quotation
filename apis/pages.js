@@ -3,6 +3,7 @@
 const router = express.Router();
 const { requireAuthPageAuto } = require('../middlewares/auth');
 const { requirePermissionPage } = require('../middlewares/rbac');
+const { getRuntimeConfig } = require('../config/env');
 const adminAnalyticsService = require('../services/adminAnalyticsService');
 
 function renderPage(res, view, locals = {}) {
@@ -26,18 +27,22 @@ router.get('/quotes', requireAuthPageAuto, (req, res) => {
 });
 
 router.get('/quotes/new', requireAuthPageAuto, (req, res) => {
+  const runtime = getRuntimeConfig();
   renderPage(res, 'quote_form', {
     title: '新增報價單 - 遊戲檢測報價平台',
     mode: 'create',
     quoteId: null,
+    quoteSalesCcEmail: runtime.quoteSalesCcEmail,
   });
 });
 
 router.get('/quotes/:id', requireAuthPageAuto, (req, res) => {
+  const runtime = getRuntimeConfig();
   renderPage(res, 'quote_form', {
     title: '報價單詳情 - 遊戲檢測報價平台',
     mode: 'edit',
     quoteId: Number(req.params.id),
+    quoteSalesCcEmail: runtime.quoteSalesCcEmail,
   });
 });
 

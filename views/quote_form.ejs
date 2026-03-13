@@ -1,12 +1,13 @@
 ﻿<div class="container-fluid">
   <div class="platform-shell p-4">
-    <div class="d-flex flex-column flex-lg-row justify-content-between align-items-lg-center mb-4">
+    <div class="d-flex flex-column flex-lg-row justify-content-between align-items-lg-center mb-4 gap-3">
       <div>
-        <div class="section-kicker">Quote Detail</div>
-        <div class="section-title"><%= mode === 'create' ? '新增遊戲檢測報價單' : '編輯報價單與案件狀態' %></div>
+        <div class="section-kicker">Quotation Flow</div>
+        <div class="section-title"><%- mode === 'create' ? '&#x5EFA;&#x7ACB;&#x904A;&#x6232;&#x6AA2;&#x6E2C;&#x5831;&#x50F9;&#x55AE;' : '&#x7DE8;&#x8F2F;&#x5831;&#x50F9;&#x55AE; / PDF / &#x5BC4;&#x9001;&#x5BA2;&#x6236;' %></div>
       </div>
-      <div class="mt-3 mt-lg-0">
-        <a class="btn btn-outline-secondary" href="/quotes">返回列表</a>
+      <div class="d-flex gap-2">
+        <a class="btn btn-outline-secondary" href="/quotes">&#x8FD4;&#x56DE;&#x5217;&#x8868;</a>
+        <a class="btn btn-outline-secondary" href="/cases">&#x6848;&#x4EF6;&#x8FFD;&#x8E64;</a>
       </div>
     </div>
 
@@ -14,103 +15,218 @@
 
     <div class="row">
       <div class="col-xl-8 mb-4">
-        <div class="form-card h-100">
+        <div class="form-card mb-4">
+          <div class="section-kicker mb-2">Step 1</div>
+          <h3 class="h5 mb-3">&#x5BA2;&#x6236;&#x8CC7;&#x8A0A;</h3>
+          <input id="customerId" type="hidden">
           <div class="form-row">
-            <div class="form-group col-md-4">
-              <label for="quoteDate">報價日期</label>
+            <div class="form-group col-lg-5">
+              <label for="customerSearch">&#x5BA2;&#x6236;&#x641C;&#x5C0B; / &#x9078;&#x64C7;</label>
+              <input id="customerSearch" class="form-control" list="customerSuggestions" placeholder="&#x8F38;&#x5165;&#x5BA2;&#x6236;&#x540D;&#x7A31;&#x641C;&#x5C0B;">
+              <datalist id="customerSuggestions"></datalist>
+              <div class="form-note mt-2">&#x9078;&#x64C7;&#x65E2;&#x6709;&#x5BA2;&#x6236;&#x6703;&#x81EA;&#x52D5;&#x5E36;&#x5165;&#x806F;&#x7D61;&#x4EBA;&#x8207; Email&#xFF0C;&#x4E5F;&#x53EF;&#x76F4;&#x63A5;&#x5728;&#x4E0B;&#x65B9;&#x5FEB;&#x901F;&#x65B0;&#x589E;&#x3002;</div>
+            </div>
+            <div class="form-group col-lg-3">
+              <label for="customerContactName">&#x806F;&#x7D61;&#x4EBA;</label>
+              <input id="customerContactName" class="form-control" placeholder="&#x5BA2;&#x6236;&#x806F;&#x7D61;&#x4EBA;&#x59D3;&#x540D;">
+            </div>
+            <div class="form-group col-lg-4">
+              <label for="customerContactEmail">&#x5BA2;&#x6236; Email</label>
+              <input id="customerContactEmail" class="form-control" type="email" placeholder="name@example.com">
+            </div>
+          </div>
+          <div class="form-row">
+            <div class="form-group col-lg-4">
+              <label for="customerName">&#x5BA2;&#x6236;&#x540D;&#x7A31;</label>
+              <input id="customerName" class="form-control" placeholder="&#x4F8B;&#x5982;&#xFF1A;&#x9452;&#x771F;&#x6578;&#x4F4D;">
+            </div>
+            <div class="form-group col-lg-4">
+              <label for="customerContactPhone">&#x806F;&#x7D61;&#x96FB;&#x8A71;</label>
+              <input id="customerContactPhone" class="form-control" placeholder="&#x9078;&#x586B;">
+            </div>
+            <div class="form-group col-lg-4">
+              <label for="billingEmail">&#x8ACB;&#x6B3E; / &#x5099;&#x7528; Email</label>
+              <input id="billingEmail" class="form-control" type="email" placeholder="&#x53EF;&#x7559;&#x7A7A;&#xFF0C;&#x9810;&#x8A2D;&#x6CBF;&#x7528;&#x5BA2;&#x6236; Email">
+            </div>
+          </div>
+          <div class="d-flex flex-wrap gap-2 align-items-center">
+            <button type="button" class="btn btn-outline-secondary btn-sm" onclick="createCustomerQuickly()">&#x5FEB;&#x901F;&#x65B0;&#x589E; / &#x66F4;&#x65B0;&#x5BA2;&#x6236;</button>
+            <span id="customerHelper" class="form-note">&#x5C1A;&#x672A;&#x9078;&#x64C7;&#x5BA2;&#x6236;</span>
+          </div>
+        </div>
+
+        <div class="form-card mb-4">
+          <div class="section-kicker mb-2">Step 2</div>
+          <h3 class="h5 mb-3">&#x5E73;&#x53F0;&#x8207;&#x50F9;&#x683C;</h3>
+          <div class="form-row">
+            <div class="form-group col-lg-3">
+              <label for="quoteDate">&#x5831;&#x50F9;&#x65E5;&#x671F;</label>
               <input id="quoteDate" type="date" class="form-control">
             </div>
-            <div class="form-group col-md-4">
-              <label for="customerOrderNo">客戶訂單編號</label>
+            <div class="form-group col-lg-3">
+              <label for="customerOrderNo">&#x5BA2;&#x6236;&#x8A02;&#x55AE;&#x7DE8;&#x865F;</label>
               <input id="customerOrderNo" class="form-control">
             </div>
-            <div class="form-group col-md-4">
-              <label for="internalOrderNo">內部訂單編號</label>
-              <input id="internalOrderNo" class="form-control">
+            <div class="form-group col-lg-3">
+              <label for="internalOrderNo">&#x5167;&#x90E8;&#x8A02;&#x55AE;&#x7DE8;&#x865F;</label>
+              <input id="internalOrderNo" class="form-control" readonly placeholder="&#x5132;&#x5B58;&#x5F8C;&#x81EA;&#x52D5;&#x7522;&#x751F;">
+            </div>
+            <div class="form-group col-lg-3">
+              <label for="serviceName">&#x670D;&#x52D9;&#x9805;&#x76EE;</label>
+              <input id="serviceName" class="form-control" value="APP&#x6AA2;&#x6E2C;&#x670D;&#x52D9;(IP&#x6D41;&#x5411;&#x6AA2;&#x6E2C;)">
             </div>
           </div>
-
           <div class="form-row">
-            <div class="form-group col-md-4">
-              <label for="customerName">客戶名稱</label>
-              <input id="customerName" class="form-control">
+            <div class="form-group col-lg-6">
+              <label for="gameTitle">&#x7533;&#x8CFC;&#x5167;&#x5BB9; / &#x904A;&#x6232;&#x540D;&#x7A31;</label>
+              <input id="gameTitle" class="form-control" placeholder="&#x8ACB;&#x8F38;&#x5165;&#x904A;&#x6232;&#x540D;&#x7A31;&#x6216;&#x6AA2;&#x6E2C;&#x5167;&#x5BB9;">
             </div>
-            <div class="form-group col-md-8">
-              <label for="gameTitle">申購內容 / 遊戲名稱</label>
-              <input id="gameTitle" class="form-control">
-            </div>
-          </div>
-
-          <div class="form-row">
-            <div class="form-group col-md-4">
-              <label for="serviceName">服務項目</label>
-              <input id="serviceName" class="form-control" value="APP檢測服務(IP流向檢測)">
-            </div>
-            <div class="form-group col-md-2">
-              <label for="quantity">數量</label>
+            <div class="form-group col-lg-2">
+              <label for="quantity">&#x6578;&#x91CF;</label>
               <input id="quantity" type="number" min="1" class="form-control" value="1">
             </div>
-            <div class="form-group col-md-3">
-              <label for="unitPriceUntaxed">單價(未稅)</label>
-              <input id="unitPriceUntaxed" type="number" min="0" class="form-control" value="0">
+            <div class="form-group col-lg-2">
+              <label for="otherItemLabel">Other &#x81EA;&#x8A02;&#x9805;&#x76EE;</label>
+              <input id="otherItemLabel" class="form-control" placeholder="&#x4F8B;&#x5982;&#xFF1A;SDK &#x4E32;&#x63A5;" disabled>
             </div>
-            <div class="form-group col-md-3">
-              <label for="totalUntaxed">總計(未稅)</label>
-              <input id="totalUntaxed" type="number" min="0" class="form-control" value="0">
+            <div class="form-group col-lg-2">
+              <label for="otherPriceUntaxed">Other &#x91D1;&#x984D;</label>
+              <input id="otherPriceUntaxed" type="number" min="0" class="form-control" value="0" disabled>
             </div>
           </div>
-
-          <div class="form-row">
-            <div class="form-group col-md-6">
-              <label>檢測平台</label>
-              <div class="border rounded p-3">
-                <div class="form-check form-check-inline"><input class="form-check-input" type="checkbox" id="platformIos"><label class="form-check-label" for="platformIos">iOS</label></div>
-                <div class="form-check form-check-inline"><input class="form-check-input" type="checkbox" id="platformAndroid"><label class="form-check-label" for="platformAndroid">Android</label></div>
-                <div class="form-check form-check-inline"><input class="form-check-input" type="checkbox" id="platformWeb"><label class="form-check-label" for="platformWeb">Web</label></div>
-                <div class="form-check form-check-inline"><input class="form-check-input" type="checkbox" id="platformOther"><label class="form-check-label" for="platformOther">Other</label></div>
+          <div class="border rounded p-3 mb-3" style="background: rgba(16, 93, 99, 0.04);">
+            <div class="form-check form-check-inline mr-3 mb-2">
+              <input class="form-check-input" type="checkbox" id="platformIos">
+              <label class="form-check-label" for="platformIos">iOS / 20,000</label>
+            </div>
+            <div class="form-check form-check-inline mr-3 mb-2">
+              <input class="form-check-input" type="checkbox" id="platformAndroid">
+              <label class="form-check-label" for="platformAndroid">Android / 20,000</label>
+            </div>
+            <div class="form-check form-check-inline mr-3 mb-2">
+              <input class="form-check-input" type="checkbox" id="platformWeb">
+              <label class="form-check-label" for="platformWeb">Web / 40,000</label>
+            </div>
+            <div class="form-check form-check-inline mb-2">
+              <input class="form-check-input" type="checkbox" id="platformOther">
+              <label class="form-check-label" for="platformOther">Other / &#x81EA;&#x586B;</label>
+            </div>
+          </div>
+          <div class="row">
+            <div class="col-lg-5 mb-3 mb-lg-0">
+              <div class="border rounded h-100 p-3">
+                <div class="section-kicker mb-2">Pricing</div>
+                <div id="pricingBreakdown" class="form-note" style="line-height: 1.9;">&#x5C1A;&#x672A;&#x9078;&#x64C7;&#x5E73;&#x53F0;</div>
               </div>
             </div>
-            <div class="form-group col-md-3">
-              <label for="signedAt">客戶回簽日期</label>
+            <div class="col-lg-7">
+              <div class="form-row mb-0">
+                <div class="form-group col-md-6 mb-3">
+                  <label for="unitPriceUntaxed">&#x672A;&#x7A05;&#x55AE;&#x50F9;</label>
+                  <input id="unitPriceUntaxed" type="number" class="form-control" readonly>
+                </div>
+                <div class="form-group col-md-6 mb-3">
+                  <label for="totalUntaxed">&#x672A;&#x7A05;&#x7E3D;&#x8A08;</label>
+                  <input id="totalUntaxed" type="number" class="form-control" readonly>
+                </div>
+                <div class="form-group col-md-6 mb-0">
+                  <label for="taxAmount">&#x71DF;&#x696D;&#x7A05; 5%</label>
+                  <input id="taxAmount" type="number" class="form-control" readonly>
+                </div>
+                <div class="form-group col-md-6 mb-0">
+                  <label for="totalAmount">&#x542B;&#x7A05;&#x7E3D;&#x8A08;</label>
+                  <input id="totalAmount" type="number" class="form-control" readonly>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="form-card mb-4">
+          <div class="section-kicker mb-2">Step 3</div>
+          <h3 class="h5 mb-3">&#x806F;&#x7D61;&#x8207;&#x5BC4;&#x9001;</h3>
+          <div class="form-row">
+            <div class="form-group col-lg-4">
+              <label for="salesCcEmail">&#x696D;&#x52D9;&#x526F;&#x672C; Email</label>
+              <input id="salesCcEmail" class="form-control" list="salesCcSuggestions" value="<%= quoteSalesCcEmail || '' %>" placeholder="&#x9810;&#x8A2D;&#x5148;&#x5E36;&#x5165;&#x767B;&#x5165;&#x8005; Email">
+              <datalist id="salesCcSuggestions"></datalist>
+              <div class="form-note mt-2">&#x9810;&#x8A2D;&#x5148;&#x5E36;&#x5165;&#x767B;&#x5165;&#x8005; Email&#xFF0C;&#x4E5F;&#x53EF;&#x9078;&#x64C7;&#x7CFB;&#x7D71;&#x9810;&#x8A2D;&#x6216;&#x81EA;&#x884C;&#x8F38;&#x5165;&#x5176;&#x4ED6;&#x526F;&#x672C;&#x4FE1;&#x7BB1;&#x3002;</div>
+            </div>
+            <div class="form-group col-lg-4">
+              <label for="signedAt">&#x5BA2;&#x6236;&#x56DE;&#x7C3D;&#x65E5;&#x671F;</label>
               <input id="signedAt" type="date" class="form-control">
             </div>
-            <div class="form-group col-md-3">
-              <label for="closedAt">結案日期</label>
+            <div class="form-group col-lg-4">
+              <label for="closedAt">&#x7D50;&#x6848;&#x65E5;&#x671F;</label>
               <input id="closedAt" type="date" class="form-control">
             </div>
           </div>
+          <div class="form-row">
+            <div class="form-group col-lg-6">
+              <label for="emailSubject">Email &#x4E3B;&#x65E8;</label>
+              <input id="emailSubject" class="form-control" placeholder="&#x5132;&#x5B58;&#x5F8C;&#x81EA;&#x52D5;&#x5E36;&#x5165;&#x9810;&#x8A2D;&#x4E3B;&#x65E8;">
+            </div>
+            <div class="form-group col-lg-6">
+              <label for="emailRecipientPreview">&#x5BC4;&#x9001;&#x5C0D;&#x8C61;</label>
+              <input id="emailRecipientPreview" class="form-control" readonly placeholder="&#x5132;&#x5B58;&#x5F8C;&#x986F;&#x793A; To / CC">
+            </div>
+          </div>
+          <div class="form-group mb-0">
+            <label for="emailBody">Email &#x5167;&#x6587;</label>
+            <textarea id="emailBody" rows="6" class="form-control" placeholder="&#x5132;&#x5B58;&#x5F8C;&#x53EF;&#x76F4;&#x63A5;&#x5FAE;&#x8ABF;&#x5BC4;&#x9001;&#x5167;&#x5BB9;"></textarea>
+          </div>
+        </div>
 
-          <div class="form-group">
-            <label for="notes">備註</label>
-            <textarea id="notes" rows="4" class="form-control"></textarea>
+        <div class="form-card">
+          <div class="section-kicker mb-2">Step 4</div>
+          <h3 class="h5 mb-3">&#x72C0;&#x614B;&#x8207;&#x5099;&#x8A3B;</h3>
+          <div class="form-row">
+            <div class="form-group col-md-4">
+              <label for="caseStatus">&#x6848;&#x4EF6;&#x72C0;&#x614B;</label>
+              <select id="caseStatus" class="form-control">
+                <option>DRAFT</option>
+                <option>QUOTED</option>
+                <option>SIGNED</option>
+                <option>IN_PROGRESS</option>
+                <option>COMPLETED</option>
+                <option>CLOSED</option>
+              </select>
+            </div>
+            <div class="form-group col-md-4">
+              <label for="billingStatus">&#x8ACB;&#x6B3E;&#x72C0;&#x614B;</label>
+              <select id="billingStatus" class="form-control">
+                <option>UNBILLED</option>
+                <option>BILLED</option>
+                <option>SETTLED</option>
+              </select>
+            </div>
+            <div class="form-group col-md-4">
+              <label>PDF &#x72C0;&#x614B;</label>
+              <div id="pdfStatusText" class="border rounded px-3 py-2 bg-white">&#x5C1A;&#x672A;&#x7522;&#x751F; PDF</div>
+            </div>
+          </div>
+          <div class="form-group mb-0">
+            <label for="notes">&#x5099;&#x8A3B;</label>
+            <textarea id="notes" rows="5" class="form-control" placeholder="&#x88DC;&#x5145;&#x8AAA;&#x660E;&#x3001;&#x6AA2;&#x6E2C;&#x7BC4;&#x570D;&#x3001;&#x5BC4;&#x9001;&#x5099;&#x8A3B;&#x7B49;"></textarea>
           </div>
         </div>
       </div>
 
       <div class="col-xl-4 mb-4">
-        <div class="form-card h-100">
-          <div class="form-group">
-            <label for="caseStatus">案件狀態</label>
-            <select id="caseStatus" class="form-control">
-              <option>DRAFT</option>
-              <option>QUOTED</option>
-              <option>SIGNED</option>
-              <option>IN_PROGRESS</option>
-              <option>COMPLETED</option>
-              <option>CLOSED</option>
-            </select>
-          </div>
-          <div class="form-group">
-            <label for="billingStatus">請款狀態</label>
-            <select id="billingStatus" class="form-control">
-              <option>UNBILLED</option>
-              <option>BILLED</option>
-              <option>SETTLED</option>
-            </select>
-          </div>
-          <div class="form-note mb-3">建立後可在案件追蹤頁快速更新狀態；這裡則適合編修完整資料。</div>
-          <button class="btn btn-danger btn-block mb-2" onclick="saveQuote()"><%= mode === 'create' ? '建立報價單' : '儲存變更' %></button>
-          <a class="btn btn-outline-secondary btn-block" href="/cases">前往案件追蹤</a>
+        <div class="form-card mb-4 sticky-top" style="top: 96px;">
+          <div class="section-kicker mb-2">Actions</div>
+          <h3 class="h5 mb-3">PDF &#x8207;&#x5BC4;&#x9001;&#x52D5;&#x4F5C;</h3>
+          <button type="button" class="btn btn-danger btn-block mb-2" onclick="saveQuote()"><%- mode === 'create' ? '&#x5EFA;&#x7ACB;&#x5831;&#x50F9;&#x55AE;' : '&#x5132;&#x5B58;&#x8B8A;&#x66F4;' %></button>
+          <button id="previewBtn" type="button" class="btn btn-outline-secondary btn-block mb-2" onclick="openPdfPreview()" disabled>&#x9810;&#x89BD; PDF</button>
+          <button id="downloadBtn" type="button" class="btn btn-outline-secondary btn-block mb-2" onclick="downloadPdf()" disabled>&#x4E0B;&#x8F09; PDF</button>
+          <button id="sendBtn" type="button" class="btn btn-primary btn-block" onclick="sendQuoteEmail()" disabled>&#x5BC4;&#x9001;&#x5831;&#x50F9;&#x55AE;</button>
+          <div class="form-note mt-3">&#x5BC4;&#x9001;&#x6642;&#x7CFB;&#x7D71;&#x6703;&#x5148;&#x91CD;&#x65B0;&#x7522;&#x751F;&#x6700;&#x65B0;&#x7248; PDF&#xFF0C;&#x518D;&#x5BC4;&#x7D66;&#x5BA2;&#x6236;&#x4E26;&#x526F;&#x672C;&#x696D;&#x52D9;&#x4FE1;&#x7BB1;&#x3002;</div>
+        </div>
+
+        <div class="form-card">
+          <div class="section-kicker mb-2">Send Logs</div>
+          <h3 class="h5 mb-3">&#x5BC4;&#x9001;&#x7D00;&#x9304;</h3>
+          <div id="sendLogs" class="form-note">&#x5C1A;&#x7121;&#x5BC4;&#x9001;&#x7D00;&#x9304;</div>
         </div>
       </div>
     </div>
@@ -120,6 +236,14 @@
 <script>
   const quoteId = <%- JSON.stringify(quoteId) %>;
   const mode = <%- JSON.stringify(mode) %>;
+  const defaultSalesCcEmail = <%- JSON.stringify(quoteSalesCcEmail || '') %>;
+  let currentQuote = null;
+  let currentUser = null;
+  let customerMap = new Map();
+
+  function escapeHtml(value) {
+    return String(value ?? '').replace(/[&<>"']/g, (char) => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;' }[char]));
+  }
 
   function showMsg(message, type = 'danger') {
     const box = document.getElementById('msgBox');
@@ -127,41 +251,161 @@
     box.textContent = message;
   }
 
-  function collectPayload() {
+  function clearMsg() {
+    const box = document.getElementById('msgBox');
+    box.className = 'alert d-none';
+    box.textContent = '';
+  }
+
+  function formatMoney(value) {
+    return new Intl.NumberFormat('zh-TW', { style: 'currency', currency: 'TWD', maximumFractionDigits: 0 }).format(Number(value || 0));
+  }
+
+  function collectPlatforms() {
     return {
+      ios: document.getElementById('platformIos').checked,
+      android: document.getElementById('platformAndroid').checked,
+      web: document.getElementById('platformWeb').checked,
+      other: document.getElementById('platformOther').checked,
+    };
+  }
+
+  function updateRecipientPreview() {
+    const to = document.getElementById('customerContactEmail').value || '未設定客戶 Email';
+    const cc = document.getElementById('salesCcEmail').value || '未設定副本信箱';
+    document.getElementById('emailRecipientPreview').value = `${to} / CC ${cc}`;
+  }
+
+  function updateSalesCcSuggestions() {
+    const list = document.getElementById('salesCcSuggestions');
+    const values = [currentUser?.email, defaultSalesCcEmail].filter(Boolean);
+    list.innerHTML = [...new Set(values)].map((value) => `<option value="${escapeHtml(value)}"></option>`).join('');
+  }
+
+  async function loadCurrentUser() {
+    try {
+      const response = await axios.get('/api/me');
+      currentUser = response.data?.user || null;
+      if (!currentUser?.email) {
+        const profileResponse = await axios.get('/api/me/profile');
+        currentUser = {
+          ...(currentUser || {}),
+          ...(profileResponse.data?.user || {}),
+        };
+      }
+    } catch (error) {
+      try {
+        const profileResponse = await axios.get('/api/me/profile');
+        currentUser = profileResponse.data?.user || null;
+      } catch {
+        currentUser = null;
+      }
+    }
+
+    updateSalesCcSuggestions();
+    const ccInput = document.getElementById('salesCcEmail');
+    if (!ccInput.value || ccInput.value === defaultSalesCcEmail) {
+      ccInput.value = currentUser?.email || defaultSalesCcEmail || '';
+    }
+    updateRecipientPreview();
+  }
+
+  function recalcPricing() {
+    const platforms = collectPlatforms();
+    const quantity = Number(document.getElementById('quantity').value || 1);
+    const otherEnabled = platforms.other;
+    const otherLabelInput = document.getElementById('otherItemLabel');
+    const otherPriceInput = document.getElementById('otherPriceUntaxed');
+    otherLabelInput.disabled = !otherEnabled;
+    otherPriceInput.disabled = !otherEnabled;
+    if (!otherEnabled) {
+      otherLabelInput.value = '';
+      otherPriceInput.value = 0;
+    }
+
+    const other = otherEnabled ? Number(otherPriceInput.value || 0) : 0;
+    const otherLabel = otherEnabled ? (otherLabelInput.value || '自訂項目') : null;
+    const breakdown = {
+      ios: platforms.ios ? 20000 : 0,
+      android: platforms.android ? 20000 : 0,
+      web: platforms.web ? 40000 : 0,
+      other,
+      otherItemLabel: otherLabel,
+    };
+    const unitPrice = breakdown.ios + breakdown.android + breakdown.web + breakdown.other;
+    const totalUntaxed = unitPrice * Math.max(quantity, 1);
+    const taxAmount = Math.round(totalUntaxed * 0.05 * 100) / 100;
+    const totalAmount = totalUntaxed + taxAmount;
+
+    document.getElementById('unitPriceUntaxed').value = unitPrice;
+    document.getElementById('totalUntaxed').value = totalUntaxed;
+    document.getElementById('taxAmount').value = taxAmount;
+    document.getElementById('totalAmount').value = totalAmount;
+    document.getElementById('pricingBreakdown').innerHTML = [
+      `iOS：${formatMoney(breakdown.ios)}`,
+      `Android：${formatMoney(breakdown.android)}`,
+      `Web：${formatMoney(breakdown.web)}`,
+      `${breakdown.otherItemLabel || 'Other'}：${formatMoney(breakdown.other)}`,
+      `數量：${quantity}`,
+      `未稅總計：${formatMoney(totalUntaxed)}`,
+      `營業稅 5%：${formatMoney(taxAmount)}`,
+      `含稅總計：${formatMoney(totalAmount)}`,
+    ].join('<br>');
+  }
+
+  function collectPayload() {
+    const emailBody = document.getElementById('emailBody').value || '';
+    return {
+      customerId: document.getElementById('customerId').value || null,
+      customerName: document.getElementById('customerName').value,
+      customerContactName: document.getElementById('customerContactName').value,
+      customerContactEmail: document.getElementById('customerContactEmail').value,
+      customerContactPhone: document.getElementById('customerContactPhone').value,
+      billingEmail: document.getElementById('billingEmail').value,
       quoteDate: document.getElementById('quoteDate').value,
       customerOrderNo: document.getElementById('customerOrderNo').value,
-      customerName: document.getElementById('customerName').value,
-      gameTitle: document.getElementById('gameTitle').value,
       serviceName: document.getElementById('serviceName').value,
-      internalOrderNo: document.getElementById('internalOrderNo').value,
+      gameTitle: document.getElementById('gameTitle').value,
       quantity: Number(document.getElementById('quantity').value || 1),
-      unitPriceUntaxed: Number(document.getElementById('unitPriceUntaxed').value || 0),
-      totalUntaxed: Number(document.getElementById('totalUntaxed').value || 0),
+      otherItemLabel: document.getElementById('otherItemLabel').value,
+      otherPriceUntaxed: Number(document.getElementById('otherPriceUntaxed').value || 0),
+      salesCcEmail: document.getElementById('salesCcEmail').value,
       signedAt: document.getElementById('signedAt').value || null,
       closedAt: document.getElementById('closedAt').value || null,
       caseStatus: document.getElementById('caseStatus').value,
       billingStatus: document.getElementById('billingStatus').value,
       notes: document.getElementById('notes').value,
-      platforms: {
-        ios: document.getElementById('platformIos').checked,
-        android: document.getElementById('platformAndroid').checked,
-        web: document.getElementById('platformWeb').checked,
-        other: document.getElementById('platformOther').checked,
-      },
+      platforms: collectPlatforms(),
+      emailSubject: document.getElementById('emailSubject').value,
+      emailBody,
     };
   }
 
+  function fillCustomer(customer) {
+    if (!customer) return;
+    document.getElementById('customerId').value = customer.id || '';
+    document.getElementById('customerName').value = customer.name || '';
+    document.getElementById('customerSearch').value = customer.name || '';
+    document.getElementById('customerContactName').value = customer.contactName || '';
+    document.getElementById('customerContactEmail').value = customer.contactEmail || customer.billingEmail || '';
+    document.getElementById('customerContactPhone').value = customer.contactPhone || '';
+    document.getElementById('billingEmail').value = customer.billingEmail || customer.contactEmail || '';
+    document.getElementById('customerHelper').textContent = `\u76EE\u524D\u9078\u64C7\uFF1A${customer.name || '\u672A\u547D\u540D\u5BA2\u6236'}`;
+    updateRecipientPreview();
+  }
+
   function fillForm(quote) {
+    currentQuote = quote;
     document.getElementById('quoteDate').value = quote.quoteDate || '';
     document.getElementById('customerOrderNo').value = quote.customerOrderNo || '';
-    document.getElementById('customerName').value = quote.customerName || '';
-    document.getElementById('gameTitle').value = quote.gameTitle || '';
-    document.getElementById('serviceName').value = quote.serviceName || '';
     document.getElementById('internalOrderNo').value = quote.internalOrderNo || '';
+    document.getElementById('serviceName').value = quote.serviceName || 'APP\u6AA2\u6E2C\u670D\u52D9(IP\u6D41\u5411\u6AA2\u6E2C)';
+    document.getElementById('gameTitle').value = quote.gameTitle || '';
     document.getElementById('quantity').value = quote.quantity || 1;
-    document.getElementById('unitPriceUntaxed').value = quote.unitPriceUntaxed || 0;
-    document.getElementById('totalUntaxed').value = quote.totalUntaxed || 0;
+    document.getElementById('otherItemLabel').value = quote.pricingBreakdown?.otherItemLabel || '';
+    document.getElementById('otherPriceUntaxed').value = quote.otherPriceUntaxed || 0;
+    document.getElementById('taxAmount').value = quote.taxAmount || 0;
+    document.getElementById('totalAmount').value = quote.totalAmount || 0;
     document.getElementById('signedAt').value = quote.signedAt || '';
     document.getElementById('closedAt').value = quote.closedAt || '';
     document.getElementById('caseStatus').value = quote.caseStatus || 'QUOTED';
@@ -171,46 +415,181 @@
     document.getElementById('platformAndroid').checked = !!quote.platforms?.android;
     document.getElementById('platformWeb').checked = !!quote.platforms?.web;
     document.getElementById('platformOther').checked = !!quote.platforms?.other;
+    document.getElementById('salesCcEmail').value = currentUser?.email || quote.salesCcEmail || defaultSalesCcEmail || ''; 
+    document.getElementById('emailSubject').value = quote.emailDraft?.subject || '';
+    document.getElementById('emailBody').value = (quote.emailDraft?.messageHtml || '').replace(/<br\s*\/?>/gi, '\n').replace(/<[^>]+>/g, '');
+    updateRecipientPreview();
+    document.getElementById('pdfStatusText').textContent = quote.pdfStatus ? `\u5DF2\u7522\u751F PDF\uFF1A${quote.pdfAttachment?.fileName || '\u6700\u65B0\u7248'}` : '\u5C1A\u672A\u7522\u751F PDF';
+    fillCustomer({
+      id: quote.customerId,
+      name: quote.customerName,
+      contactName: quote.customerContactName,
+      contactEmail: quote.customerContactEmail,
+      billingEmail: quote.billingEmail,
+      contactPhone: quote.customerContactPhone,
+    });
+    recalcPricing();
+    updateActionState();
   }
 
-  function recalcTotal() {
-    const qty = Number(document.getElementById('quantity').value || 0);
-    const price = Number(document.getElementById('unitPriceUntaxed').value || 0);
-    document.getElementById('totalUntaxed').value = qty * price;
+  function updateActionState() {
+    const editable = mode === 'edit' || !!quoteId || !!currentQuote?.id;
+    document.getElementById('previewBtn').disabled = !editable;
+    document.getElementById('downloadBtn').disabled = !editable;
+    document.getElementById('sendBtn').disabled = !editable;
+  }
+
+  async function loadCustomers(keyword = '') {
+    try {
+      const response = await axios.get('/api/customers', { params: { keyword, limit: 20 } });
+      const customers = response.data.customers || [];
+      const list = document.getElementById('customerSuggestions');
+      list.innerHTML = '';
+      customerMap = new Map();
+      customers.forEach((customer) => {
+        customerMap.set(customer.name, customer);
+        const option = document.createElement('option');
+        option.value = customer.name;
+        list.appendChild(option);
+      });
+    } catch (error) {
+      showMsg(error?.response?.data?.message || '\u8B80\u53D6\u5BA2\u6236\u4E3B\u6A94\u5931\u6557');
+    }
+  }
+
+  function trySelectCustomerByName(name) {
+    const customer = customerMap.get(name);
+    if (customer) fillCustomer(customer);
+  }
+
+  async function createCustomerQuickly() {
+    clearMsg();
+    try {
+      const payload = {
+        name: document.getElementById('customerName').value || document.getElementById('customerSearch').value,
+        contactName: document.getElementById('customerContactName').value,
+        contactEmail: document.getElementById('customerContactEmail').value,
+        billingEmail: document.getElementById('billingEmail').value,
+        contactPhone: document.getElementById('customerContactPhone').value,
+      };
+      const response = await axios.post('/api/customers', payload);
+      fillCustomer(response.data.customer);
+      await loadCustomers(payload.name || '');
+      showMsg('\u5BA2\u6236\u4E3B\u6A94\u5DF2\u66F4\u65B0', 'success');
+    } catch (error) {
+      showMsg(error?.response?.data?.message || '\u5EFA\u7ACB\u5BA2\u6236\u5931\u6557');
+    }
   }
 
   async function loadQuote() {
+    clearMsg();
+    await loadCustomers();
+    await loadCurrentUser();
     if (!quoteId) {
       document.getElementById('quoteDate').value = new Date().toISOString().slice(0, 10);
+      recalcPricing();
+      updateActionState();
       return;
     }
 
     try {
       const response = await axios.get(`/api/quotes/${quoteId}`);
       fillForm(response.data.quote);
+      await loadSendLogs();
     } catch (error) {
-      showMsg(error?.response?.data?.message || '讀取報價資料失敗');
+      showMsg(error?.response?.data?.message || '\u8B80\u53D6\u5831\u50F9\u8CC7\u6599\u5931\u6557');
     }
   }
 
   async function saveQuote() {
-    const payload = collectPayload();
+    clearMsg();
     try {
+      const payload = collectPayload();
       if (mode === 'create') {
         const response = await axios.post('/api/quotes', payload);
         window.location.href = `/quotes/${response.data.quote.id}`;
-      } else {
-        await axios.patch(`/api/quotes/${quoteId}`, payload);
-        showMsg('報價單已更新', 'success');
+        return;
       }
+
+      const response = await axios.patch(`/api/quotes/${quoteId}`, payload);
+      fillForm(response.data.quote);
+      await loadSendLogs();
+      showMsg('\u5831\u50F9\u55AE\u5DF2\u66F4\u65B0', 'success');
     } catch (error) {
-      showMsg(error?.response?.data?.message || '儲存失敗');
+      showMsg(error?.response?.data?.message || '\u5132\u5B58\u5931\u6557');
+    }
+  }
+
+  function openPdfPreview() {
+    const id = currentQuote?.id || quoteId;
+    if (!id) return;
+    window.open(`/api/quotes/${id}/pdf`, '_blank');
+  }
+
+  function downloadPdf() {
+    const id = currentQuote?.id || quoteId;
+    if (!id) return;
+    window.open(`/api/quotes/${id}/pdf?download=1`, '_blank');
+  }
+
+  async function sendQuoteEmail() {
+    const id = currentQuote?.id || quoteId;
+    if (!id) return;
+    clearMsg();
+    try {
+      const response = await axios.post(`/api/quotes/${id}/send`, {
+        to: document.getElementById('customerContactEmail').value,
+        cc: document.getElementById('salesCcEmail').value,
+        subject: document.getElementById('emailSubject').value,
+        messageHtml: (document.getElementById('emailBody').value || '').replace(/\n/g, '<br>'),
+      });
+      await loadQuote();
+      showMsg(`\u5831\u50F9\u55AE\u5DF2\u5BC4\u51FA\uFF1A${response.data.result.to}`, 'success');
+    } catch (error) {
+      showMsg(error?.response?.data?.message || '\u5BC4\u9001\u5931\u6557');
+    }
+  }
+
+  async function loadSendLogs() {
+    const id = currentQuote?.id || quoteId;
+    if (!id) return;
+    const wrapper = document.getElementById('sendLogs');
+    try {
+      const response = await axios.get(`/api/quotes/${id}/send-logs`);
+      const logs = response.data.logs || [];
+      wrapper.innerHTML = logs.length ? logs.map((log) => `
+        <div class="border rounded p-2 mb-2 bg-white">
+          <div class="font-weight-bold">${escapeHtml(log.subject)}</div>
+          <div class="form-note">To: ${escapeHtml(log.recipientTo)} / CC: ${escapeHtml(log.recipientCc || '?')}</div>
+          <div class="form-note">${escapeHtml(log.sentAt)} / ${escapeHtml(log.sendStatus)}</div>
+        </div>
+      `).join('') : '\u5C1A\u7121\u5BC4\u9001\u7D00\u9304';
+    } catch (error) {
+      wrapper.textContent = error?.response?.data?.message || '\u8B80\u53D6\u5BC4\u9001\u7D00\u9304\u5931\u6557';
     }
   }
 
   document.addEventListener('DOMContentLoaded', function () {
-    document.getElementById('quantity').addEventListener('input', recalcTotal);
-    document.getElementById('unitPriceUntaxed').addEventListener('input', recalcTotal);
+    ['platformIos', 'platformAndroid', 'platformWeb', 'platformOther', 'quantity', 'otherItemLabel', 'otherPriceUntaxed'].forEach((id) => {
+      document.getElementById(id).addEventListener('input', recalcPricing);
+      document.getElementById(id).addEventListener('change', recalcPricing);
+    });
+
+    document.getElementById('customerSearch').addEventListener('input', function (event) {
+      const keyword = event.target.value || '';
+      if (keyword.length >= 1) loadCustomers(keyword);
+    });
+
+    document.getElementById('customerSearch').addEventListener('change', function (event) {
+      trySelectCustomerByName(event.target.value);
+    });
+
+    ['customerContactEmail', 'salesCcEmail'].forEach((id) => {
+      document.getElementById(id).addEventListener('input', updateRecipientPreview);
+      document.getElementById(id).addEventListener('change', updateRecipientPreview);
+    });
+
     loadQuote();
   });
 </script>
+

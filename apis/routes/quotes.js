@@ -1,13 +1,14 @@
-﻿const express = require("express");
+﻿const express = require('express');
 
-const { asyncHandler } = require("../../utils/http");
-const { requireAuthAuto } = require("../../middlewares/auth");
-const quoteService = require("../../services/quoteService");
+const { asyncHandler } = require('../../utils/http');
+const { requireAuthAuto } = require('../../middlewares/auth');
+const { requirePermission } = require('../../middlewares/rbac');
+const quoteService = require('../../services/quoteService');
 
 const router = express.Router();
 
 router.get(
-  "/quotes",
+  '/quotes',
   requireAuthAuto,
   asyncHandler(async (req, res) => {
     const quotes = await quoteService.listQuotes(req.query || {});
@@ -16,7 +17,7 @@ router.get(
 );
 
 router.post(
-  "/quotes",
+  '/quotes',
   requireAuthAuto,
   asyncHandler(async (req, res) => {
     const quote = await quoteService.createQuote(req.user, req.body || {});
@@ -25,7 +26,7 @@ router.post(
 );
 
 router.get(
-  "/quotes/:id",
+  '/quotes/:id',
   requireAuthAuto,
   asyncHandler(async (req, res) => {
     const quote = await quoteService.getQuoteById(Number(req.params.id));
@@ -34,11 +35,44 @@ router.get(
 );
 
 router.patch(
-  "/quotes/:id",
+  '/quotes/:id',
   requireAuthAuto,
   asyncHandler(async (req, res) => {
     const quote = await quoteService.updateQuote(Number(req.params.id), req.user, req.body || {});
     res.status(200).json({ quote });
+  })
+);
+
+router.get(
+  '/quotes/:id/pdf',
+  requireAuthAuto,
+  asyncHandler(async (req, res) => {
+    const { quote, attachment } = await quoteService.generateQuotePdf(Number(req.params.id), req.user);
+    const disposition = req.query.download === '1' ? 'attachment' : 'inline';
+
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `${disposition}; filename="${attachment.fileName}"`);
+    res.setHeader('X-Quote-Internal-Order-No', quote.internalOrderNo || '');
+    return res.sendFile(attachment.filePath);
+  })
+);
+
+router.post(
+  '/quotes/:id/send',
+  requireAuthAuto,
+  requirePermission('quote:send'),
+  asyncHandler(async (req, res) => {
+    const result = await quoteService.sendQuote(Number(req.params.id), req.user, req.body || {});
+    res.status(200).json({ result });
+  })
+);
+
+router.get(
+  '/quotes/:id/send-logs',
+  requireAuthAuto,
+  asyncHandler(async (req, res) => {
+    const logs = await quoteService.listQuoteSendLogs(Number(req.params.id));
+    res.status(200).json({ logs });
   })
 );
 

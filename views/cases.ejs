@@ -66,6 +66,7 @@
               <th>回簽 / 結案</th>
               <th>案件狀態</th>
               <th>請款狀態</th>
+              <th>金額</th>
               <th>天數</th>
               <th></th>
             </tr>
@@ -80,6 +81,10 @@
 <script>
   function escapeHtml(value) {
     return String(value ?? '').replace(/[&<>"']/g, (char) => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;' }[char]));
+  }
+
+  function formatMoney(value) {
+    return new Intl.NumberFormat('zh-TW', { style: 'currency', currency: 'TWD', maximumFractionDigits: 0 }).format(Number(value || 0));
   }
 
   function getPlatforms(platforms) {
@@ -147,6 +152,10 @@
             </select>
           </td>
           <td>
+            <div>未稅：${escapeHtml(formatMoney(item.totalUntaxed || 0))}</div>
+            <div>含稅：${escapeHtml(formatMoney(item.totalAmount || item.totalUntaxed || 0))}</div>
+          </td>
+          <td>
             <div>回簽 ${escapeHtml(item.daysToSign ?? '—')} 天</div>
             <div>開案 ${escapeHtml(item.daysOpen ?? '—')} 天</div>
           </td>
@@ -155,7 +164,7 @@
             <a class="btn btn-sm btn-outline-secondary" href="/quotes/${item.id}">詳情</a>
           </td>
         </tr>
-      `).join('') : '<tr><td colspan="7" class="empty-state">目前沒有案件資料</td></tr>';
+      `).join('') : '<tr><td colspan="8" class="empty-state">目前沒有案件資料</td></tr>';
     } catch (error) {
       showMsg(error?.response?.data?.message || '讀取案件資料失敗');
     }
