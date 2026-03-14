@@ -52,8 +52,11 @@ router.get(
 
     res.setHeader('Content-Type', 'application/pdf');
     res.setHeader('Content-Disposition', `${disposition}; filename="${attachment.fileName}"`);
+    res.setHeader('Content-Length', String(attachment.fileSize || attachment.buffer?.length || 0));
+    res.setHeader('Cache-Control', 'no-store');
     res.setHeader('X-Quote-Internal-Order-No', quote.internalOrderNo || '');
-    return res.sendFile(attachment.filePath);
+    res.setHeader('X-Quotation-No', quote.quotationNo || quote.quoteNo || '');
+    return res.end(attachment.buffer);
   })
 );
 

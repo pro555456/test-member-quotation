@@ -94,6 +94,37 @@ async function main() {
     );
   });
 
+  await run('composeQuotationNo generates branded outward numbering', async () => {
+    const value = quoteService._internals.composeQuotationNo({
+      prefix: 'wil',
+      dateValue: '2026-03-14',
+      sequenceNo: 1,
+      versionNo: 2,
+    });
+    assert.equal(value, 'WIL20260314GT01b');
+  });
+
+  await run('buildEmailDraft uses quotation mail signature template', async () => {
+    const draft = quoteService._internals.buildEmailDraft({
+      quotationNo: 'WIL20260314GT01a',
+      gameTitle: '測試遊戲',
+      quoteDate: '2026-03-14',
+      quotationValidUntil: '2026-03-29',
+      customerName: '客戶甲',
+      pdfContactName: 'Wilson',
+      pdfContactPhone: '0912345678',
+      pdfContactEmail: 'wilson@example.com',
+    });
+    assert.equal(draft.subject.includes('云佳數位'), true);
+    assert.equal(draft.messageHtml.includes('Best Regards,'), true);
+    assert.equal(draft.messageHtml.includes('Wilson'), true);
+    assert.equal(draft.messageHtml.includes('0912345678'), true);
+    assert.equal(draft.messageHtml.includes('wilson@example.com'), true);
+    assert.equal(draft.messageHtml.includes('云佳數位科技有限公司'), true);
+    assert.equal(draft.messageHtml.includes('本報價單自報價日起 15 天內有效'), true);
+    assert.equal(draft.messageHtml.includes('TestFlight'), true);
+  });
+
   await run('app bootstraps as an express instance', async () => {
     assert.equal(typeof app.use, 'function');
   });
@@ -107,7 +138,7 @@ async function main() {
       const loginRes = await fetch(`http://127.0.0.1:${port}/`);
       const loginHtml = await loginRes.text();
       assert.equal(loginRes.status, 200);
-      assert.equal(loginHtml.includes('Game QA Hub'), true);
+      assert.equal(loginHtml.includes('YUNJIA DIGITAL'), true);
 
       const indexRes = await fetch(`http://127.0.0.1:${port}/index`, { redirect: 'manual' });
       assert.equal(indexRes.status, 302);

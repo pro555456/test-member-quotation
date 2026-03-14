@@ -2,8 +2,8 @@
   <div class="platform-shell p-4">
     <div class="d-flex flex-column flex-lg-row justify-content-between align-items-lg-center mb-4 gap-3">
       <div>
-        <div class="section-kicker">Quotation Flow</div>
-        <div class="section-title"><%- mode === 'create' ? '&#x5EFA;&#x7ACB;&#x904A;&#x6232;&#x6AA2;&#x6E2C;&#x5831;&#x50F9;&#x55AE;' : '&#x7DE8;&#x8F2F;&#x5831;&#x50F9;&#x55AE; / PDF / &#x5BC4;&#x9001;&#x5BA2;&#x6236;' %></div>
+        <div class="section-kicker"><%= branding?.brandName || 'YUNJIA DIGITAL' %></div>
+        <div class="section-title"><%- mode === 'create' ? '&#x5EFA;&#x7ACB;&#x6B63;&#x5F0F;&#x5831;&#x50F9;&#x55AE;' : '&#x7DE8;&#x8F2F;&#x5831;&#x50F9;&#x55AE; / PDF / &#x5BC4;&#x9001;&#x5BA2;&#x6236;' %></div>
       </div>
       <div class="d-flex gap-2">
         <a class="btn btn-outline-secondary" href="/quotes">&#x8FD4;&#x56DE;&#x5217;&#x8868;</a>
@@ -64,6 +64,10 @@
               <input id="quoteDate" type="date" class="form-control">
             </div>
             <div class="form-group col-lg-3">
+              <label for="quotationNo">&#x6B63;&#x5F0F;&#x5831;&#x50F9;&#x55AE;&#x7DE8;&#x865F;</label>
+              <input id="quotationNo" class="form-control" readonly placeholder="&#x5132;&#x5B58;&#x5F8C;&#x81EA;&#x52D5;&#x7522;&#x751F;">
+            </div>
+            <div class="form-group col-lg-3">
               <label for="customerOrderNo">&#x5BA2;&#x6236;&#x8A02;&#x55AE;&#x7DE8;&#x865F;</label>
               <input id="customerOrderNo" class="form-control">
             </div>
@@ -71,9 +75,19 @@
               <label for="internalOrderNo">&#x5167;&#x90E8;&#x8A02;&#x55AE;&#x7DE8;&#x865F;</label>
               <input id="internalOrderNo" class="form-control" readonly placeholder="&#x5132;&#x5B58;&#x5F8C;&#x81EA;&#x52D5;&#x7522;&#x751F;">
             </div>
-            <div class="form-group col-lg-3">
+          </div>
+          <div class="form-row">
+            <div class="form-group col-lg-4">
               <label for="serviceName">&#x670D;&#x52D9;&#x9805;&#x76EE;</label>
-              <input id="serviceName" class="form-control" value="APP&#x6AA2;&#x6E2C;&#x670D;&#x52D9;(IP&#x6D41;&#x5411;&#x6AA2;&#x6E2C;)">
+              <input id="serviceName" class="form-control" value="APP&#x6AA2;&#x6E2C;&#x670D;&#x52D9;">
+            </div>
+            <div class="form-group col-lg-4">
+              <label for="quotationValidUntil">&#x5831;&#x50F9;&#x6709;&#x6548;&#x671F;&#x9650;</label>
+              <input id="quotationValidUntil" class="form-control" readonly placeholder="15 &#x5929;">
+            </div>
+            <div class="form-group col-lg-4">
+              <label for="pdfStoragePath">&#x5831;&#x50F9; PDF &#x5B58;&#x653E;&#x8DEF;&#x5F91;</label>
+              <input id="pdfStoragePath" class="form-control" readonly value="<%= quotePdfStoragePath || '' %>">
             </div>
           </div>
           <div class="form-row">
@@ -216,11 +230,13 @@
         <div class="form-card mb-4 sticky-top" style="top: 96px;">
           <div class="section-kicker mb-2">Actions</div>
           <h3 class="h5 mb-3">PDF &#x8207;&#x5BC4;&#x9001;&#x52D5;&#x4F5C;</h3>
-          <button type="button" class="btn btn-danger btn-block mb-2" onclick="saveQuote()"><%- mode === 'create' ? '&#x5EFA;&#x7ACB;&#x5831;&#x50F9;&#x55AE;' : '&#x5132;&#x5B58;&#x8B8A;&#x66F4;' %></button>
+          <button type="button" class="btn btn-danger btn-block mb-2" onclick="saveQuote()"><%- mode === 'create' ? '&#x5EFA;&#x7ACB;&#x6B63;&#x5F0F;&#x5831;&#x50F9;&#x55AE;' : '&#x5132;&#x5B58;&#x8B8A;&#x66F4;' %></button>
           <button id="previewBtn" type="button" class="btn btn-outline-secondary btn-block mb-2" onclick="openPdfPreview()" disabled>&#x9810;&#x89BD; PDF</button>
           <button id="downloadBtn" type="button" class="btn btn-outline-secondary btn-block mb-2" onclick="downloadPdf()" disabled>&#x4E0B;&#x8F09; PDF</button>
           <button id="sendBtn" type="button" class="btn btn-primary btn-block" onclick="sendQuoteEmail()" disabled>&#x5BC4;&#x9001;&#x5831;&#x50F9;&#x55AE;</button>
           <div class="form-note mt-3">&#x5BC4;&#x9001;&#x6642;&#x7CFB;&#x7D71;&#x6703;&#x5148;&#x91CD;&#x65B0;&#x7522;&#x751F;&#x6700;&#x65B0;&#x7248; PDF&#xFF0C;&#x518D;&#x5BC4;&#x7D66;&#x5BA2;&#x6236;&#x4E26;&#x526F;&#x672C;&#x696D;&#x52D9;&#x4FE1;&#x7BB1;&#x3002;</div>
+          <div class="form-note mt-2">&#x9810;&#x8A2D;&#x5132;&#x5B58;&#x8CC7;&#x6599;&#x593E;&#xFF1A;<span id="pdfStoragePathText"><%= quotePdfStoragePath || '' %></span></div>
+          <div class="form-note mt-1">&#x6700;&#x65B0; PDF &#x6A94;&#x540D;&#xFF1A;<span id="pdfFileNameText">&#x5C1A;&#x672A;&#x7522;&#x751F;</span></div>
         </div>
 
         <div class="form-card">
@@ -237,28 +253,114 @@
   const quoteId = <%- JSON.stringify(quoteId) %>;
   const mode = <%- JSON.stringify(mode) %>;
   const defaultSalesCcEmail = <%- JSON.stringify(quoteSalesCcEmail || '') %>;
+  const defaultPdfStoragePath = <%- JSON.stringify(quotePdfStoragePath || '') %>;
+  const quoteValidityDays = <%- JSON.stringify(branding?.quoteValidityDays || 15) %>;
+  const quoteEmailTemplate = <%- JSON.stringify(quoteEmailTemplate || {}) %>;
   let currentQuote = null;
   let currentUser = null;
   let customerMap = new Map();
+  let msgTimer = null;
 
   function escapeHtml(value) {
     return String(value ?? '').replace(/[&<>"']/g, (char) => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;' }[char]));
   }
 
-  function showMsg(message, type = 'danger') {
+  function showMsg(message, type = 'danger', autoHideMs = 0) {
     const box = document.getElementById('msgBox');
     box.className = `alert alert-${type}`;
     box.textContent = message;
+    if (msgTimer) {
+      clearTimeout(msgTimer);
+      msgTimer = null;
+    }
+    if (autoHideMs > 0) {
+      msgTimer = setTimeout(() => {
+        clearMsg();
+      }, autoHideMs);
+    }
   }
 
   function clearMsg() {
     const box = document.getElementById('msgBox');
     box.className = 'alert d-none';
     box.textContent = '';
+    if (msgTimer) {
+      clearTimeout(msgTimer);
+      msgTimer = null;
+    }
   }
 
   function formatMoney(value) {
     return new Intl.NumberFormat('zh-TW', { style: 'currency', currency: 'TWD', maximumFractionDigits: 0 }).format(Number(value || 0));
+  }
+
+  function addDays(dateValue, days) {
+    if (!dateValue) return '';
+    const date = new Date(`${dateValue}T00:00:00`);
+    date.setDate(date.getDate() + Number(days || 0));
+    return date.toISOString().slice(0, 10);
+  }
+
+  function currentGreetingName() {
+    return document.getElementById('customerContactName').value
+      || document.getElementById('customerName').value
+      || '您好';
+  }
+
+  function compactLines(lines = []) {
+    return lines.filter((line, index, arr) => !(line === '' && arr[index - 1] === ''));
+  }
+
+  function buildDefaultEmailBody() {
+    const quoteNo = document.getElementById('quotationNo').value || '（儲存後自動帶入）';
+    const gameTitle = document.getElementById('gameTitle').value || '（請輸入遊戲名稱）';
+    const quoteDate = document.getElementById('quoteDate').value || new Date().toISOString().slice(0, 10);
+    const signatureLines = compactLines([
+      quoteEmailTemplate.closing || 'Best Regards,',
+      '',
+      currentUser?.name || '',
+      currentUser?.cellphone || currentUser?.phone || '',
+      currentUser?.email || '',
+      quoteEmailTemplate.companyNameZh || '云佳數位科技有限公司',
+    ]);
+    const lines = compactLines([
+      `${currentGreetingName()} 你好：`,
+      quoteEmailTemplate.introLine || '附件為本次遊戲檢測報價單，請您查收。如需調整平台內容、補充資料或重新排程，歡迎直接回信與我們聯繫。',
+      '',
+      `${quoteEmailTemplate.labels?.quotationNo || '報價單編號'}：${quoteNo}`,
+      '',
+      `${quoteEmailTemplate.labels?.gameTitle || '遊戲名稱'}：${gameTitle}`,
+      '',
+      `${quoteEmailTemplate.labels?.quoteDate || '報價日期'}：${quoteDate}`,
+      '',
+      quoteEmailTemplate.notesTitle || '備註說明：',
+      ...(quoteEmailTemplate.noteLines || []),
+      quoteEmailTemplate.validityLine || validityText(),
+      '',
+      ...signatureLines,
+    ]);
+    return lines.join('\n');
+  }
+
+  function validityText() {
+    return `報價有效期限：本報價單自報價日起 ${quoteValidityDays} 天內有效，逾期需重新確認報價條件。`;
+  }
+
+  function syncEmailTemplate(force = false) {
+    const emailBody = document.getElementById('emailBody');
+    if (force || emailBody.dataset.dirty !== '1') {
+      emailBody.value = buildDefaultEmailBody();
+      if (force) emailBody.dataset.dirty = '0';
+    }
+  }
+
+  function applySaveNoticeFromQuery() {
+    const url = new URL(window.location.href);
+    if (url.searchParams.get('saved') === '1') {
+      showMsg('已儲存報價單', 'success', 4000);
+      url.searchParams.delete('saved');
+      window.history.replaceState({}, '', `${url.pathname}${url.search}${url.hash}`);
+    }
   }
 
   function collectPlatforms() {
@@ -308,6 +410,7 @@
       ccInput.value = currentUser?.email || defaultSalesCcEmail || '';
     }
     updateRecipientPreview();
+    syncEmailTemplate();
   }
 
   function recalcPricing() {
@@ -351,6 +454,9 @@
       `營業稅 5%：${formatMoney(taxAmount)}`,
       `含稅總計：${formatMoney(totalAmount)}`,
     ].join('<br>');
+
+    const quoteDate = document.getElementById('quoteDate').value;
+    document.getElementById('quotationValidUntil').value = addDays(quoteDate || new Date().toISOString().slice(0, 10), quoteValidityDays);
   }
 
   function collectPayload() {
@@ -392,14 +498,20 @@
     document.getElementById('billingEmail').value = customer.billingEmail || customer.contactEmail || '';
     document.getElementById('customerHelper').textContent = `\u76EE\u524D\u9078\u64C7\uFF1A${customer.name || '\u672A\u547D\u540D\u5BA2\u6236'}`;
     updateRecipientPreview();
+    syncEmailTemplate();
   }
 
   function fillForm(quote) {
     currentQuote = quote;
     document.getElementById('quoteDate').value = quote.quoteDate || '';
+    document.getElementById('quotationNo').value = quote.quotationNo || quote.quoteNo || '';
     document.getElementById('customerOrderNo').value = quote.customerOrderNo || '';
     document.getElementById('internalOrderNo').value = quote.internalOrderNo || '';
-    document.getElementById('serviceName').value = quote.serviceName || 'APP\u6AA2\u6E2C\u670D\u52D9(IP\u6D41\u5411\u6AA2\u6E2C)';
+    document.getElementById('quotationValidUntil').value = quote.quotationValidUntil || addDays(quote.quoteDate, quoteValidityDays);
+    document.getElementById('pdfStoragePath').value = quote.pdfStoragePath || defaultPdfStoragePath || '';
+    document.getElementById('pdfStoragePathText').textContent = quote.pdfStoragePath || defaultPdfStoragePath || '未設定';
+    document.getElementById('pdfFileNameText').textContent = quote.pdfFileName || quote.pdfAttachment?.fileName || '尚未產生';
+    document.getElementById('serviceName').value = quote.serviceName || 'APP\u6AA2\u6E2C\u670D\u52D9';
     document.getElementById('gameTitle').value = quote.gameTitle || '';
     document.getElementById('quantity').value = quote.quantity || 1;
     document.getElementById('otherItemLabel').value = quote.pricingBreakdown?.otherItemLabel || '';
@@ -417,9 +529,11 @@
     document.getElementById('platformOther').checked = !!quote.platforms?.other;
     document.getElementById('salesCcEmail').value = currentUser?.email || quote.salesCcEmail || defaultSalesCcEmail || ''; 
     document.getElementById('emailSubject').value = quote.emailDraft?.subject || '';
-    document.getElementById('emailBody').value = (quote.emailDraft?.messageHtml || '').replace(/<br\s*\/?>/gi, '\n').replace(/<[^>]+>/g, '');
+    syncEmailTemplate(true);
     updateRecipientPreview();
-    document.getElementById('pdfStatusText').textContent = quote.pdfStatus ? `\u5DF2\u7522\u751F PDF\uFF1A${quote.pdfAttachment?.fileName || '\u6700\u65B0\u7248'}` : '\u5C1A\u672A\u7522\u751F PDF';
+    document.getElementById('pdfStatusText').textContent = quote.pdfStatus
+      ? `\u5DF2\u7522\u751F PDF\uFF1A${quote.pdfAttachment?.fileName || quote.pdfFileName || '\u6700\u65B0\u7248'}`
+      : '\u5C1A\u672A\u7522\u751F PDF';
     fillCustomer({
       id: quote.customerId,
       name: quote.customerName,
@@ -487,8 +601,14 @@
     await loadCurrentUser();
     if (!quoteId) {
       document.getElementById('quoteDate').value = new Date().toISOString().slice(0, 10);
+      document.getElementById('pdfStoragePath').value = defaultPdfStoragePath || '';
+      document.getElementById('pdfStoragePathText').textContent = defaultPdfStoragePath || '未設定';
+      document.getElementById('quotationValidUntil').value = addDays(document.getElementById('quoteDate').value, quoteValidityDays);
+      document.getElementById('serviceName').value = 'APP\u6AA2\u6E2C\u670D\u52D9';
+      syncEmailTemplate(true);
       recalcPricing();
       updateActionState();
+      applySaveNoticeFromQuery();
       return;
     }
 
@@ -496,6 +616,7 @@
       const response = await axios.get(`/api/quotes/${quoteId}`);
       fillForm(response.data.quote);
       await loadSendLogs();
+      applySaveNoticeFromQuery();
     } catch (error) {
       showMsg(error?.response?.data?.message || '\u8B80\u53D6\u5831\u50F9\u8CC7\u6599\u5931\u6557');
     }
@@ -507,14 +628,14 @@
       const payload = collectPayload();
       if (mode === 'create') {
         const response = await axios.post('/api/quotes', payload);
-        window.location.href = `/quotes/${response.data.quote.id}`;
+        window.location.href = `/quotes/${response.data.quote.id}?saved=1`;
         return;
       }
 
       const response = await axios.patch(`/api/quotes/${quoteId}`, payload);
       fillForm(response.data.quote);
       await loadSendLogs();
-      showMsg('\u5831\u50F9\u55AE\u5DF2\u66F4\u65B0', 'success');
+      showMsg('\u5831\u50F9\u55AE\u5DF2\u66F4\u65B0', 'success', 4000);
     } catch (error) {
       showMsg(error?.response?.data?.message || '\u5132\u5B58\u5931\u6557');
     }
@@ -544,7 +665,7 @@
         messageHtml: (document.getElementById('emailBody').value || '').replace(/\n/g, '<br>'),
       });
       await loadQuote();
-      showMsg(`\u5831\u50F9\u55AE\u5DF2\u5BC4\u51FA\uFF1A${response.data.result.to}`, 'success');
+      showMsg(`\u5831\u50F9\u55AE\u5DF2\u5BC4\u51FA\uFF1A${response.data.result.to}`, 'success', 4000);
     } catch (error) {
       showMsg(error?.response?.data?.message || '\u5BC4\u9001\u5931\u6557');
     }
@@ -575,6 +696,11 @@
       document.getElementById(id).addEventListener('change', recalcPricing);
     });
 
+    ['customerContactName', 'customerName', 'gameTitle', 'quoteDate', 'quotationNo'].forEach((id) => {
+      document.getElementById(id).addEventListener('input', () => syncEmailTemplate());
+      document.getElementById(id).addEventListener('change', () => syncEmailTemplate());
+    });
+
     document.getElementById('customerSearch').addEventListener('input', function (event) {
       const keyword = event.target.value || '';
       if (keyword.length >= 1) loadCustomers(keyword);
@@ -587,6 +713,10 @@
     ['customerContactEmail', 'salesCcEmail'].forEach((id) => {
       document.getElementById(id).addEventListener('input', updateRecipientPreview);
       document.getElementById(id).addEventListener('change', updateRecipientPreview);
+    });
+
+    document.getElementById('emailBody').addEventListener('input', function () {
+      this.dataset.dirty = '1';
     });
 
     loadQuote();

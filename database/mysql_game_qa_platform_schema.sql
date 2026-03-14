@@ -258,6 +258,10 @@ CREATE TABLE IF NOT EXISTS inspection_quotes (
 CREATE TABLE IF NOT EXISTS quotes (
   id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
   quote_no VARCHAR(32) NOT NULL,
+  quote_number_prefix CHAR(3) DEFAULT NULL,
+  quote_sequence_no INT UNSIGNED DEFAULT NULL,
+  quote_version_no INT UNSIGNED NOT NULL DEFAULT 1,
+  quote_number_date DATE DEFAULT NULL,
   quote_date DATE NOT NULL,
   customer_id BIGINT UNSIGNED NOT NULL,
   vendor_id BIGINT UNSIGNED DEFAULT NULL,
@@ -285,6 +289,7 @@ CREATE TABLE IF NOT EXISTS quotes (
   UNIQUE KEY uniq_quotes_dedupe_key (dedupe_key),
   UNIQUE KEY uniq_quotes_legacy_inspection_quote (legacy_inspection_quote_id),
   KEY idx_quotes_customer_date (customer_id, quote_date),
+  KEY idx_quotes_number_date_sequence (quote_number_date, quote_sequence_no),
   KEY idx_quotes_vendor (vendor_id),
   KEY idx_quotes_case_status (case_status),
   KEY idx_quotes_billing_status (billing_status),

@@ -4,6 +4,8 @@ const mySqlDb = require('../connection/mySqlConnection');
 const customerService = require('./customerService');
 const quotePdfService = require('./quotePdfService');
 const { getRuntimeConfig } = require('../config/env');
+const { getBrandingConfig } = require('../config/branding');
+const { buildQuoteEmailLines } = require('../config/quoteEmailTemplate');
 const { sendMail } = require('../utils/mailer');
 const { HttpError } = require('../utils/http');
 
@@ -36,6 +38,13 @@ function sanitizeHtml(value, max = 20000) {
 
 function roundMoney(value) {
   return Math.round(Number(value || 0) * 100) / 100;
+}
+
+function addDays(dateValue, days) {
+  const base = normalizeDate(dateValue, 'date');
+  const date = new Date(`${base}T00:00:00`);
+  date.setDate(date.getDate() + Number(days || 0));
+  return date.toISOString().slice(0, 10);
 }
 
 function excelSerialToIso(value) {
@@ -156,7 +165,34 @@ function computeBillingStatus(payload) {
   return 'UNBILLED';
 }
 
-function buildQuoteNo(dateValue = new Date()) {
+function sanitizePrefixSegment(value) {
+  const text = String(value || '').replace(/[^a-zA-Z0-9]/g, '').toUpperCase();
+  return (text || 'XXX').slice(0, 3).padEnd(3, 'X');
+}
+
+function getEmailPrefix(email) {
+  const localPart = String(email || '').split('@')[0] || '';
+  return sanitizePrefixSegment(localPart);
+}
+
+function revisionNumberToSuffix(value) {
+  let number = Number(value || 1);
+  if (!Number.isFinite(number) || number < 1) number = 1;
+  let suffix = '';
+  while (number > 0) {
+    number -= 1;
+    suffix = String.fromCharCode(97 + (number % 26)) + suffix;
+    number = Math.floor(number / 26);
+  }
+  return suffix || 'a';
+}
+
+function composeQuotationNo({ prefix, dateValue, sequenceNo, versionNo }) {
+  const datePart = normalizeDate(dateValue, 'quoteDate').replace(/-/g, '');
+  return `${sanitizePrefixSegment(prefix)}${datePart}GT${String(Number(sequenceNo || 1)).padStart(2, '0')}${revisionNumberToSuffix(versionNo)}`;
+}
+
+function buildFallbackQuoteNo(dateValue = new Date()) {
   const stamp = normalizeDate(dateValue, 'quoteDate').replace(/-/g, '');
   return `QT${stamp}${crypto.randomBytes(2).toString('hex').toUpperCase()}`;
 }
@@ -199,6 +235,51 @@ function buildPricingBreakdown(platforms, quantity, otherPriceUntaxed, otherItem
   };
 }
 
+function buildQuoteLineItems(quote) {
+  const quantity = Number(quote.quantity || 1);
+  const breakdown = quote.pricingBreakdown || {};
+  const gameTitle = sanitizeText(quote.gameTitle, 255) || '遊戲檢測';
+  const serviceName = sanitizeText(quote.serviceName, 255) || '遊戲檢測服務';
+  const rows = [
+    quote.platforms?.ios ? {
+      itemName: gameTitle,
+      specification: `${serviceName}(平台：iOS)`,
+      quantity,
+      unitPrice: PLATFORM_PRICES.ios,
+      lineTotal: roundMoney(PLATFORM_PRICES.ios * quantity),
+    } : null,
+    quote.platforms?.android ? {
+      itemName: gameTitle,
+      specification: `${serviceName}(平台：Android)`,
+      quantity,
+      unitPrice: PLATFORM_PRICES.android,
+      lineTotal: roundMoney(PLATFORM_PRICES.android * quantity),
+    } : null,
+    quote.platforms?.web ? {
+      itemName: gameTitle,
+      specification: `${serviceName}(平台：Web)`,
+      quantity,
+      unitPrice: PLATFORM_PRICES.web,
+      lineTotal: roundMoney(PLATFORM_PRICES.web * quantity),
+    } : null,
+    quote.platforms?.other ? {
+      itemName: gameTitle,
+      specification: `${breakdown.otherItemLabel || '自訂項目'}`,
+      quantity,
+      unitPrice: Number(breakdown.other || quote.otherPriceUntaxed || 0),
+      lineTotal: roundMoney(Number(breakdown.other || quote.otherPriceUntaxed || 0) * quantity),
+    } : null,
+  ].filter(Boolean);
+
+  return rows.length ? rows : [{
+    itemName: gameTitle,
+    specification: serviceName,
+    quantity,
+    unitPrice: Number(quote.unitPriceUntaxed || 0),
+    lineTotal: Number(quote.totalUntaxed || 0),
+  }];
+}
+
 function normalizeQuotePayload(payload = {}, current = null) {
   const quoteDate = normalizeDate(payload.quoteDate ?? current?.quoteDate ?? new Date(), 'quoteDate');
   const signedAt = normalizeDate(payload.signedAt ?? current?.signedAt, 'signedAt');
@@ -226,7 +307,7 @@ function normalizeQuotePayload(payload = {}, current = null) {
 
   const normalized = {
     customerId,
-    quoteNo: sanitizeText(payload.quoteNo ?? current?.quoteNo, 32) || buildQuoteNo(quoteDate),
+    quoteNo: sanitizeText(payload.quoteNo ?? current?.quoteNo, 32) || buildFallbackQuoteNo(quoteDate),
     quoteDate,
     customerOrderNo: sanitizeText(payload.customerOrderNo ?? current?.customerOrderNo, 64) || null,
     customerName,
@@ -235,7 +316,7 @@ function normalizeQuotePayload(payload = {}, current = null) {
     customerContactPhone: sanitizeText(payload.customerContactPhone ?? current?.customerContactPhone, 30) || null,
     billingEmail: sanitizeText(payload.billingEmail ?? current?.billingEmail, 200) || null,
     gameTitle: sanitizeText(payload.gameTitle ?? current?.gameTitle, 255),
-    serviceName: sanitizeText((payload.serviceName ?? current?.serviceName) || 'APP\u6aa2\u6e2c\u670d\u52d9(IP\u6d41\u5411\u6aa2\u6e2c)', 255),
+    serviceName: sanitizeText((payload.serviceName ?? current?.serviceName) || 'APP\u6aa2\u6e2c\u670d\u52d9', 255),
     platforms,
     signedAt,
     notes: sanitizeText(payload.notes ?? current?.notes, 4000) || null,
@@ -336,12 +417,21 @@ function platformCodesToMap(codes = []) {
 }
 
 function buildEmailDraft(quote) {
-  const subject = `[Game QA Hub] \u904a\u6232\u6aa2\u6e2c\u5831\u50f9\u55ae ${quote.internalOrderNo || quote.quoteNo || '?'}`.trim();
-  const messageHtml =     `<p>${quote.customerContactName || quote.customerName || '\u60a8\u597d'}嚗?/p>
-    <p>\u9644\u4ef6\u70ba\u672c\u6b21\u904a\u6232\u6aa2\u6e2c\u5831\u50f9\u55ae\uff0c\u8acb\u60a8\u67e5\u6536\u3002\u5982\u9700\u8abf\u6574\u5e73\u53f0\u5167\u5bb9\u6216\u88dc\u5145\u8cc7\u8a0a\uff0c\u6b61\u8fce\u76f4\u63a5\u56de\u4fe1\u8207\u6211\u5011\u806f\u7e6b\u3002</p>
-    <p>\u5831\u50f9\u7de8\u865f\uFF1A${quote.internalOrderNo || quote.quoteNo || '?'}<br>\u904a\u6232\u540d\u7a31\uFF1A${quote.gameTitle || '?'}<br>\u5831\u50f9\u65e5\u671f\uFF1A${quote.quoteDate || '?'}</p>
-    <p>\u8b1d\u8b1d\u3002</p>
-    <p>Game QA Hub</p>`.trim();
+  const branding = getBrandingConfig();
+  const subject = `[${branding.brandName}] 遊戲檢測報價單 ${quote.quotationNo || quote.quoteNo || quote.internalOrderNo || '?'}`.trim();
+  const messageLines = buildQuoteEmailLines({
+    customerContactName: quote.customerContactName,
+    customerName: quote.customerName,
+    quotationNo: quote.quotationNo || quote.quoteNo || quote.internalOrderNo || '?',
+    gameTitle: quote.gameTitle,
+    quoteDate: quote.quoteDate,
+    salesContactName: quote.pdfContactName || quote.salesContactName || '',
+    salesContactPhone: quote.pdfContactPhone || quote.salesContactPhone || '',
+    salesContactEmail: quote.pdfContactEmail || quote.salesContactEmail || '',
+  });
+  const messageHtml = `
+    <p>${messageLines.map((line) => sanitizeHtml(line)).join('<br>')}</p>
+  `.trim();
 
   return { subject, messageHtml };
 }
@@ -366,6 +456,36 @@ async function ensureGame(tx, title, userId) {
   return { id: Number(result.insertId), title: safeTitle };
 }
 
+async function resolveUserEmail(tx, user) {
+  if (sanitizeText(user?.email, 200)) return sanitizeText(user.email, 200);
+  const userId = parsePositiveInteger(user?.id);
+  if (!userId) return '';
+  const row = await tx.queryOne('SELECT email FROM custaccount WHERE id = ? LIMIT 1', [userId]);
+  return sanitizeText(row?.email, 200);
+}
+
+async function resolveUserProfile(tx, user, fallbackUserId = null) {
+  const userId = parsePositiveInteger(user?.id) || parsePositiveInteger(fallbackUserId);
+  const directName = sanitizeText(user?.name, 120);
+  const directEmail = sanitizeText(user?.email, 200);
+  const directPhone = sanitizeText(user?.cellphone || user?.phone, 30);
+
+  if (!userId) {
+    return {
+      name: directName || '',
+      email: directEmail || '',
+      phone: directPhone || '',
+    };
+  }
+
+  const row = await tx.queryOne('SELECT name, email, cellphone FROM custaccount WHERE id = ? LIMIT 1', [userId]);
+  return {
+    name: sanitizeText(row?.name, 120) || directName || '',
+    email: sanitizeText(row?.email, 200) || directEmail || '',
+    phone: sanitizeText(row?.cellphone, 30) || directPhone || '',
+  };
+}
+
 async function generateInternalOrderNo(tx, quoteDate) {
   const runtime = getRuntimeConfig();
   const prefix = sanitizeText(runtime.quoteNoPrefix || 'GQ', 20) || 'GQ';
@@ -388,6 +508,66 @@ async function generateInternalOrderNo(tx, quoteDate) {
   }
 
   throw new HttpError(500, 'Unable to allocate internal order number', 'QUOTE_NO_EXHAUSTED');
+}
+
+async function generateQuotationIdentity(tx, quoteDate, user, existingQuoteRow = null) {
+  if (existingQuoteRow?.quote_number_prefix && existingQuoteRow?.quote_sequence_no && existingQuoteRow?.quote_number_date) {
+    const versionNo = Math.max(1, Number(existingQuoteRow.quote_version_no || 1) + 1);
+    const quoteNumberDate = normalizeDate(existingQuoteRow.quote_number_date, 'quoteNumberDate');
+    const prefix = sanitizePrefixSegment(existingQuoteRow.quote_number_prefix);
+    const sequenceNo = Number(existingQuoteRow.quote_sequence_no);
+    return {
+      quoteNumberPrefix: prefix,
+      quoteSequenceNo: sequenceNo,
+      quoteVersionNo: versionNo,
+      quoteNumberDate,
+      quoteNo: composeQuotationNo({ prefix, dateValue: quoteNumberDate, sequenceNo, versionNo }),
+    };
+  }
+
+  if (existingQuoteRow?.quote_no && !existingQuoteRow?.quote_number_prefix && !existingQuoteRow?.quote_sequence_no) {
+    const userEmail = await resolveUserEmail(tx, user);
+    const prefix = getEmailPrefix(userEmail);
+    const quoteNumberDate = normalizeDate(existingQuoteRow.quote_date || quoteDate, 'quoteDate');
+    const latest = await tx.queryOne(
+      `SELECT quote_sequence_no
+       FROM quotes
+       WHERE quote_number_date = ? AND quote_sequence_no IS NOT NULL
+       ORDER BY quote_sequence_no DESC
+       LIMIT 1`,
+      [quoteNumberDate]
+    );
+    const sequenceNo = Math.max(1, Number(latest?.quote_sequence_no || 0) + 1);
+    const versionNo = 2;
+    return {
+      quoteNumberPrefix: prefix,
+      quoteSequenceNo: sequenceNo,
+      quoteVersionNo: versionNo,
+      quoteNumberDate,
+      quoteNo: composeQuotationNo({ prefix, dateValue: quoteNumberDate, sequenceNo, versionNo }),
+    };
+  }
+
+  const userEmail = await resolveUserEmail(tx, user);
+  const prefix = getEmailPrefix(userEmail);
+  const quoteNumberDate = normalizeDate(quoteDate, 'quoteDate');
+  const latest = await tx.queryOne(
+    `SELECT quote_sequence_no
+     FROM quotes
+     WHERE quote_number_date = ? AND quote_sequence_no IS NOT NULL
+     ORDER BY quote_sequence_no DESC
+     LIMIT 1`,
+    [quoteNumberDate]
+  );
+  const sequenceNo = Math.max(1, Number(latest?.quote_sequence_no || 0) + 1);
+  const versionNo = 1;
+  return {
+    quoteNumberPrefix: prefix,
+    quoteSequenceNo: sequenceNo,
+    quoteVersionNo: versionNo,
+    quoteNumberDate,
+    quoteNo: composeQuotationNo({ prefix, dateValue: quoteNumberDate, sequenceNo, versionNo }),
+  };
 }
 
 async function syncQuotePlatforms(tx, quoteItemId, platforms) {
@@ -520,12 +700,21 @@ async function saveLegacyQuote(tx, normalized, { legacyId = null, userId = null 
   return Number(result.insertId);
 }
 
-async function saveFormalQuote(tx, normalized, customer, game, { quoteId = null, legacyInspectionQuoteId = null, existingQuoteRow = null, userId = null } = {}) {
+async function saveFormalQuote(tx, normalized, customer, game, { quoteId = null, legacyInspectionQuoteId = null, existingQuoteRow = null, user = null, userId = null, preserveQuoteNo = false } = {}) {
   const resolvedInternalOrderNo = existingQuoteRow?.internal_order_no || normalized.internalOrderNo || await generateInternalOrderNo(tx, normalized.quoteDate);
-  const resolvedQuoteNo = existingQuoteRow?.quote_no || normalized.quoteNo || buildQuoteNo(normalized.quoteDate);
   const resolvedCustomerContactName = normalized.customerContactName || customer.contactName || customer.name;
   const resolvedCustomerContactEmail = normalized.customerContactEmail || customer.billingEmail || customer.contactEmail || null;
   const resolvedSalesOwnerUserId = normalized.salesOwnerUserId || existingQuoteRow?.sales_owner_user_id || userId || null;
+  const quoteIdentity = preserveQuoteNo
+    ? {
+        quoteNumberPrefix: sanitizeText(existingQuoteRow?.quote_number_prefix, 3) || null,
+        quoteSequenceNo: existingQuoteRow?.quote_sequence_no ? Number(existingQuoteRow.quote_sequence_no) : null,
+        quoteVersionNo: existingQuoteRow?.quote_version_no ? Number(existingQuoteRow.quote_version_no) : 1,
+        quoteNumberDate: existingQuoteRow?.quote_number_date ? normalizeDate(existingQuoteRow.quote_number_date, 'quoteNumberDate') : normalizeDate(normalized.quoteDate, 'quoteDate'),
+        quoteNo: existingQuoteRow?.quote_no || normalized.quoteNo || buildFallbackQuoteNo(normalized.quoteDate),
+      }
+    : await generateQuotationIdentity(tx, normalized.quoteDate, user, existingQuoteRow);
+  const resolvedQuoteNo = quoteIdentity.quoteNo;
   const resolvedDedupeKey = buildDedupeKey({
     customerOrderNo: normalized.customerOrderNo,
     internalOrderNo: resolvedInternalOrderNo,
@@ -536,6 +725,10 @@ async function saveFormalQuote(tx, normalized, customer, game, { quoteId = null,
 
   const quoteBaseParams = [
     resolvedQuoteNo,
+    quoteIdentity.quoteNumberPrefix,
+    quoteIdentity.quoteSequenceNo,
+    quoteIdentity.quoteVersionNo,
+    quoteIdentity.quoteNumberDate,
     normalized.quoteDate,
     customer.id,
     resolvedSalesOwnerUserId,
@@ -563,7 +756,7 @@ async function saveFormalQuote(tx, normalized, customer, game, { quoteId = null,
   if (resolvedQuoteId) {
     await tx.query(
       `UPDATE quotes
-       SET quote_no = ?, quote_date = ?, customer_id = ?, sales_owner_user_id = ?, customer_order_no = ?,
+       SET quote_no = ?, quote_number_prefix = ?, quote_sequence_no = ?, quote_version_no = ?, quote_number_date = ?, quote_date = ?, customer_id = ?, sales_owner_user_id = ?, customer_order_no = ?,
            internal_order_no = ?, customer_contact_name = ?, customer_contact_email = ?, service_name = ?,
            case_status = ?, billing_status = ?, signed_at = ?, closed_at = ?, subtotal_untaxed = ?, tax_amount = ?, total_amount = ?,
            notes = ?, source_sheet = ?, source_row_no = ?, dedupe_key = ?, legacy_inspection_quote_id = ?, updated_by = ?
@@ -573,11 +766,11 @@ async function saveFormalQuote(tx, normalized, customer, game, { quoteId = null,
   } else {
     const result = await tx.query(
       `INSERT INTO quotes (
-        quote_no, quote_date, customer_id, sales_owner_user_id, customer_order_no, internal_order_no,
+        quote_no, quote_number_prefix, quote_sequence_no, quote_version_no, quote_number_date, quote_date, customer_id, sales_owner_user_id, customer_order_no, internal_order_no,
         customer_contact_name, customer_contact_email, service_name, case_status, billing_status, signed_at,
         closed_at, subtotal_untaxed, tax_amount, total_amount, notes, source_sheet, source_row_no,
         dedupe_key, legacy_inspection_quote_id, created_by, updated_by
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [...quoteBaseParams, userId, userId]
     );
     resolvedQuoteId = Number(result.insertId);
@@ -643,6 +836,10 @@ async function saveFormalQuote(tx, normalized, customer, game, { quoteId = null,
   return {
     quoteId: resolvedQuoteId,
     quoteNo: resolvedQuoteNo,
+    quoteNumberPrefix: quoteIdentity.quoteNumberPrefix,
+    quoteSequenceNo: quoteIdentity.quoteSequenceNo,
+    quoteVersionNo: quoteIdentity.quoteVersionNo,
+    quoteNumberDate: quoteIdentity.quoteNumberDate,
     internalOrderNo: resolvedInternalOrderNo,
     customerContactName: resolvedCustomerContactName,
     customerContactEmail: resolvedCustomerContactEmail,
@@ -687,7 +884,9 @@ async function syncLegacyQuotesToFormal(limit = 200) {
         quoteId: existingFormal?.id ? Number(existingFormal.id) : null,
         legacyInspectionQuoteId: row.id,
         existingQuoteRow: existingFormal,
+        user: { id: row.updated_by || row.created_by || null },
         userId: row.updated_by || row.created_by || null,
+        preserveQuoteNo: true,
       });
     });
   }
@@ -747,6 +946,10 @@ async function getQuoteRows(filters = {}, { caseOnly = false, tx = mySqlDb } = {
     `SELECT
         q.id,
         q.quote_no,
+        q.quote_number_prefix,
+        q.quote_sequence_no,
+        q.quote_version_no,
+        q.quote_number_date,
         q.quote_date,
         q.customer_id,
         q.customer_order_no,
@@ -822,7 +1025,16 @@ async function hydrateQuotes(rows, { tx = mySqlDb } = {}) {
   }
 
   const runtime = getRuntimeConfig();
+  const branding = getBrandingConfig();
   return rows.map((row) => {
+    const outwardQuotationNo = row.quote_number_prefix && row.quote_sequence_no
+      ? composeQuotationNo({
+        prefix: row.quote_number_prefix,
+        dateValue: row.quote_number_date || row.quote_date,
+        sequenceNo: row.quote_sequence_no,
+        versionNo: row.quote_version_no || 1,
+      })
+      : row.quote_no;
     const platforms = platformCodesToMap(platformMap.get(Number(row.id)) || []);
     const fallbackUntaxed = Number(row.line_total_untaxed || 0);
     const storedTaxAmount = Number(row.tax_amount || 0);
@@ -846,6 +1058,12 @@ async function hydrateQuotes(rows, { tx = mySqlDb } = {}) {
     const quote = {
       id: Number(row.id),
       quoteNo: row.quote_no,
+      quotationNo: outwardQuotationNo,
+      quotationPrefix: row.quote_number_prefix || null,
+      quotationSequenceNo: row.quote_sequence_no ? Number(row.quote_sequence_no) : null,
+      quotationVersion: revisionNumberToSuffix(row.quote_version_no || 1),
+      quotationVersionNo: Number(row.quote_version_no || 1),
+      quotationNumberDate: row.quote_number_date || row.quote_date,
       quoteDate: row.quote_date,
       customerId: Number(row.customer_id),
       customerOrderNo: row.customer_order_no,
@@ -890,8 +1108,27 @@ async function hydrateQuotes(rows, { tx = mySqlDb } = {}) {
         mimeType: row.pdf_mime_type,
         fileSize: row.pdf_file_size ? Number(row.pdf_file_size) : null,
       } : null,
+      quotationValidUntil: addDays(row.quote_date, runtime.quoteValidityDays),
+      pdfFileName: row.pdf_file_name || null,
+      pdfStoragePath: row.pdf_file_path ? String(row.pdf_file_path).replace(/[\\\/][^\\\/]+$/, '') : runtime.quotePdfStoragePath,
+      companyBranding: {
+        brandName: branding.brandName,
+        companyNameZh: branding.companyNameZh,
+        companyNameEn: branding.companyNameEn,
+        taxId: branding.taxId,
+        address: branding.address,
+        phone: branding.phone,
+        website: branding.website,
+        logoPublicPath: branding.logoPublicPath,
+      },
+      paymentInfo: {
+        accountName: branding.bank.accountName,
+        bankName: branding.bank.bankName,
+        accountNo: branding.bank.accountNo,
+      },
     };
 
+    quote.lineItems = buildQuoteLineItems(quote);
     quote.emailDraft = buildEmailDraft(quote);
     return quote;
   });
@@ -902,6 +1139,10 @@ async function getFormalQuoteById(id, { tx = mySqlDb } = {}) {
     `SELECT
         q.id,
         q.quote_no,
+        q.quote_number_prefix,
+        q.quote_sequence_no,
+        q.quote_version_no,
+        q.quote_number_date,
         q.quote_date,
         q.customer_id,
         q.customer_order_no,
@@ -922,6 +1163,8 @@ async function getFormalQuoteById(id, { tx = mySqlDb } = {}) {
         q.last_sent_at,
         q.last_sent_to,
         q.last_sent_cc,
+        q.tax_amount,
+        q.total_amount,
         q.legacy_inspection_quote_id,
         q.pdf_attachment_id,
         c.name AS customer_name,
@@ -933,7 +1176,9 @@ async function getFormalQuoteById(id, { tx = mySqlDb } = {}) {
         qi.quantity,
         qi.unit_price_untaxed,
         qi.other_price_untaxed,
+        qi.tax_amount,
         qi.line_total_untaxed,
+        qi.line_total_amount,
         qi.pricing_breakdown_json,
         att.file_name AS pdf_file_name,
         att.file_path AS pdf_file_path,
@@ -1034,8 +1279,19 @@ async function persistQuote(user, payload, { id = null, fromLegacyRow = null } =
       quoteId: id,
       legacyInspectionQuoteId,
       existingQuoteRow,
+      user,
       userId: user?.id || fromLegacyRow?.updated_by || fromLegacyRow?.created_by || null,
+      preserveQuoteNo: !!fromLegacyRow,
     });
+
+    if (!fromLegacyRow && legacyInspectionQuoteId) {
+      await tx.query(
+        `UPDATE inspection_quotes
+         SET quote_no = ?, internal_order_no = ?, updated_at = NOW()
+         WHERE id = ?`,
+        [result.quoteNo, result.internalOrderNo, legacyInspectionQuoteId]
+      );
+    }
 
     return result.quoteId;
   });
@@ -1087,7 +1343,16 @@ async function updateCaseStatus(id, user, payload = {}) {
 
 async function generateQuotePdf(id, user) {
   const quote = await getQuoteById(id);
-  const attachment = await quotePdfService.persistQuotePdf(quote, { userId: user?.id || null });
+  const contactProfile = await resolveUserProfile(mySqlDb, user, quote.salesOwnerUserId);
+  const attachment = await quotePdfService.persistQuotePdf(
+    {
+      ...quote,
+      pdfContactName: contactProfile.name || quote.customerContactName || '',
+      pdfContactPhone: contactProfile.phone || '',
+      pdfContactEmail: contactProfile.email || quote.lastSentCc || '',
+    },
+    { userId: user?.id || null }
+  );
   const refreshedQuote = await getQuoteById(id);
   return { quote: refreshedQuote, attachment };
 }
@@ -1125,16 +1390,30 @@ async function sendQuote(id, user, payload = {}) {
   }
 
   const runtime = getRuntimeConfig();
-  const cc = sanitizeText(payload.cc || runtime.quoteSalesCcEmail, 500);
+  const cc = sanitizeText(payload.cc || user?.email || runtime.quoteSalesCcEmail, 500);
   if (!cc) {
     throw new HttpError(400, 'QUOTE_SALES_CC_EMAIL is not configured', 'QUOTE_SALES_CC_REQUIRED');
   }
 
-  const draft = buildEmailDraft(quote);
+  const contactProfile = await resolveUserProfile(mySqlDb, user, quote.salesOwnerUserId);
+  const draft = buildEmailDraft({
+    ...quote,
+    pdfContactName: contactProfile.name || quote.customerContactName || '',
+    pdfContactPhone: contactProfile.phone || '',
+    pdfContactEmail: contactProfile.email || cc || '',
+  });
   const subject = sanitizeText(payload.subject || draft.subject, 255) || draft.subject;
   const messageHtml = sanitizeHtml(payload.messageHtml || draft.messageHtml, 20000) || draft.messageHtml;
 
-  const pdf = await quotePdfService.persistQuotePdf(quote, { userId: user?.id || null });
+  const pdf = await quotePdfService.persistQuotePdf(
+    {
+      ...quote,
+      pdfContactName: contactProfile.name || quote.customerContactName || '',
+      pdfContactPhone: contactProfile.phone || '',
+      pdfContactEmail: contactProfile.email || cc || '',
+    },
+    { userId: user?.id || null }
+  );
 
   try {
     const response = await sendMail({
@@ -1226,10 +1505,13 @@ module.exports = {
     normalizeQuotePayload,
     normalizeLegacyQuoteRow,
     buildDedupeKey,
-    buildQuoteNo,
+    buildFallbackQuoteNo,
+    composeQuotationNo,
+    revisionNumberToSuffix,
     buildEmailDraft,
     assertCaseTransition,
     buildPricingBreakdown,
+    resolveUserProfile,
   },
 };
 

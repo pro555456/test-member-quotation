@@ -14,6 +14,7 @@ const DEFAULTS = {
   quotePdfStoragePath: process.env.QUOTE_PDF_STORAGE_PATH || path.join(process.cwd(), "tmp", "quotes-pdf"),
   quoteNoPrefix: process.env.QUOTE_NO_PREFIX || "GQ",
   quotePdfChromePath: process.env.QUOTE_PDF_CHROME_PATH || "",
+  quoteValidityDays: Number(process.env.QUOTE_VALIDITY_DAYS || 15),
 };
 
 const REQUIRED_SECRETS = ["JWT_SECRET", "JWT_REFRESH_SECRET"];

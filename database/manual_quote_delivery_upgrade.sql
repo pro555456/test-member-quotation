@@ -4,6 +4,10 @@ ALTER TABLE customers
   ADD COLUMN billing_email VARCHAR(200) NULL AFTER contact_email;
 
 ALTER TABLE quotes
+  ADD COLUMN quote_number_prefix CHAR(3) NULL AFTER quote_no,
+  ADD COLUMN quote_sequence_no INT UNSIGNED NULL AFTER quote_number_prefix,
+  ADD COLUMN quote_version_no INT UNSIGNED NOT NULL DEFAULT 1 AFTER quote_sequence_no,
+  ADD COLUMN quote_number_date DATE NULL AFTER quote_version_no,
   ADD COLUMN sales_owner_user_id INT UNSIGNED NULL AFTER vendor_id,
   ADD COLUMN internal_order_no VARCHAR(64) NULL AFTER customer_order_no,
   ADD COLUMN customer_contact_name VARCHAR(120) NULL AFTER internal_order_no,
@@ -15,6 +19,7 @@ ALTER TABLE quotes
 
 ALTER TABLE quotes
   ADD UNIQUE KEY uniq_quotes_internal_order_no (internal_order_no),
+  ADD KEY idx_quotes_number_date_sequence (quote_number_date, quote_sequence_no),
   ADD KEY idx_quotes_sales_owner (sales_owner_user_id),
   ADD KEY idx_quotes_pdf_attachment (pdf_attachment_id);
 
@@ -54,6 +59,8 @@ UPDATE quotes q
 INNER JOIN inspection_quotes iq ON iq.id = q.legacy_inspection_quote_id
 LEFT JOIN customers c ON c.id = q.customer_id
 SET q.internal_order_no = COALESCE(q.internal_order_no, iq.internal_order_no),
+    q.quote_number_date = COALESCE(q.quote_number_date, q.quote_date),
+    q.quote_version_no = COALESCE(NULLIF(q.quote_version_no, 0), 1),
     q.customer_contact_name = COALESCE(q.customer_contact_name, NULLIF(iq.customer_name, '')),
     q.customer_contact_email = COALESCE(q.customer_contact_email, c.contact_email, c.billing_email)
 WHERE q.legacy_inspection_quote_id IS NOT NULL;
